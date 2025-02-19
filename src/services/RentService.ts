@@ -28,6 +28,9 @@ export class RentService {
 
       await writeFileSync(`${folderPath}/${input_filename}`, JSON.stringify(body));
 
+			const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
+			await sleep(3000)
+
 	  	const result = await exec.execSync(
         `python3 ${this.script_folder}/report_generator.py ${folderPath}/${input_filename}`
       );
