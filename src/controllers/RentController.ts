@@ -18,6 +18,11 @@ export class RentController {
   async predict(req: Request, res: Response): Promise<any> {
     try {
         const result = await RentController.service.executePrediction(req.body)
+
+        if (result.includes("No se pudo obtener")) {
+            res.status(500).send("Error al obtener ubicaciones cercanas");
+        }
+
         // Replace single quotes with double quotes
         const correctedString = result.replace(/'/g, '"');
 
