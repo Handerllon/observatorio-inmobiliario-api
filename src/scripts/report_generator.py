@@ -16,6 +16,7 @@ import uuid
 import warnings
 import sys
 import ast
+from matplotlib.ticker import FuncFormatter
 warnings.simplefilter(action='ignore', category=Warning)
 
 
@@ -52,6 +53,7 @@ OUTPUT_DATA_JSON = {
     "removed_properties_since_last_report": None,
     "nearby_places_data": None,
     "price_by_m2_evolution": None,
+    "price_evolution": None,
     "bar_price_by_amb": None,
     "bar_m2_price_by_amb": None,
     "bar_price_by_amb_neighborhood": None,
@@ -324,6 +326,9 @@ def upload_image_to_s3(bucket_name, key, plt):
     return "https://{}.s3.us-east-2.amazonaws.com/{}".format(bucket_name, key)
 
 # Sección Info estadística
+def format_yaxis(value, tick_number):
+    return '{:,.0f}'.format(value)
+
 def calculate_new_and_removed_properties_neighborhood(df_old, df_new, neighborhood=None):
 
     if not neighborhood:
@@ -342,44 +347,104 @@ def calculate_new_and_removed_properties_neighborhood(df_old, df_new, neighborho
 
     return new_properties, removed_properties
 
-def generate_price_evolution_graph(bucket_name, folder_name):
+def generate_price_m2_evolution_graph(bucket_name, folder_name):
     #Aca utilizamos la data de San Andres
     root_path = os.path.abspath(os.getcwd())
     df = pd.read_excel(root_path + HISTORIC_FILE_PATH)
-    # Quitamos del dataframe los locales y oficinas
-    # Dataframe negar la condición
+    # Filtrar el dataframe para quitar oficinas y locales
     df = df[~df['Inmueble'].isin(["Oficina", "Local"])]
     df.drop(columns=['Inmueble'], inplace=True)
+
     # Convertir la columna 'Mes' a formato datetime
     df['Mes'] = pd.to_datetime(df['Mes'], format='%Y-%m')
     df_grouped = df.groupby(['Mes', 'Barrio']).agg({'Mediana.por.m2.a.precios.corrientes': 'mean'}).reset_index()
 
+    # Obtener la fecha actual y filtrar datos del último año
     current_date = datetime.today()
     one_year_ago = current_date.replace(year=current_date.year - 1)
-    formatted_date = one_year_ago.strftime('%Y-%m')
+    df_grouped = df_grouped[df_grouped['Mes'] >= one_year_ago]
 
-    df_grouped = df_grouped[df_grouped['Mes'] >= formatted_date]
-
-    # Definir colores para cada zona
-    colores = {
-        INPUT_DATA["neighborhood"]: "blue"
-    }
+    # Filtrar para un barrio específico
+    barrio_especifico = INPUT_DATA["neighborhood"]  # Reemplázalo con el nombre del barrio que deseas graficar
+    subset = df_grouped[df_grouped['Barrio'] == barrio_especifico]
 
     # Crear la figura y el gráfico
     plt.figure(figsize=(12, 6))
     sns.set_style("whitegrid")
 
-    for zona, color in colores.items():
-        subset = df_grouped[df_grouped['Barrio'] == zona]
-        plt.plot(subset['Mes'], subset['Mediana.por.m2.a.precios.corrientes'], marker='o', label=zona, color=color)
+    # Graficar el área bajo la curva
+    plt.fill_between(subset['Mes'], subset['Mediana.por.m2.a.precios.corrientes'], 
+                    color='#4A91F1', alpha=0.4)
+
+    # Graficar la línea de precios
+    plt.plot(subset['Mes'], subset['Mediana.por.m2.a.precios.corrientes'], 
+            marker='o', label=barrio_especifico, color='#81B4F9', markersize=8)
+
+    # Definir límites para el eje Y comenzando desde el menor punto
+    min_price = subset['Mediana.por.m2.a.precios.corrientes'].min()
+    plt.ylim(bottom=min_price * 0.95)
 
     # Configurar etiquetas y título
-    plt.xlabel("Mes")
-    plt.ylabel("Precio por m2")
-    plt.title("Evolución de Precios de Alquiler")
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(format_yaxis))
+    plt.xlabel("Mes", fontsize=12)
+    plt.ylabel("Precio por m²", fontsize=12)
     plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Ajustar diseño y mostrar el gráfico
+    plt.tight_layout()
 
     image_path = upload_image_to_s3(bucket_name, folder_name + "price_by_m2_evolution.png", plt)
+    return image_path
+
+def generate_price_evolution_graph(bucket_name, folder_name):
+    #Aca utilizamos la data de San Andres
+    root_path = os.path.abspath(os.getcwd())
+    df = pd.read_excel(root_path + HISTORIC_FILE_PATH)
+    # Filtrar el dataframe para quitar oficinas y locales
+    df = df[~df['Inmueble'].isin(["Oficina", "Local"])]
+    df.drop(columns=['Inmueble'], inplace=True)
+
+    # Convertir la columna 'Mes' a formato datetime
+    df['Mes'] = pd.to_datetime(df['Mes'], format='%Y-%m')
+    df_grouped = df.groupby(['Mes', 'Barrio']).agg({'Mediana.a.precios.corrientes': 'mean'}).reset_index()
+
+    # Obtener la fecha actual y filtrar datos del último año
+    current_date = datetime.today()
+    one_year_ago = current_date.replace(year=current_date.year - 1)
+    df_grouped = df_grouped[df_grouped['Mes'] >= one_year_ago]
+
+    # Filtrar para un barrio específico
+    barrio_especifico = INPUT_DATA["neighborhood"]  # Reemplázalo con el nombre del barrio que deseas graficar
+    subset = df_grouped[df_grouped['Barrio'] == barrio_especifico]
+
+    # Crear la figura y el gráfico
+    plt.figure(figsize=(12, 6))
+    sns.set_style("whitegrid")
+
+    # Graficar el área bajo la curva
+    plt.fill_between(subset['Mes'], subset['Mediana.a.precios.corrientes'], 
+                    color='#E16D00', alpha=0.4)
+
+    # Graficar la línea de precios
+    plt.plot(subset['Mes'], subset['Mediana.a.precios.corrientes'], 
+            marker='o', label=barrio_especifico, color='#FF7B00', markersize=8)
+
+    # Definir límites para el eje Y comenzando desde el menor punto
+    min_price = subset['Mediana.a.precios.corrientes'].min()
+    plt.ylim(bottom=min_price * 0.95)
+
+    # Configurar etiquetas y título
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(format_yaxis))
+    plt.xlabel("Mes", fontsize=12)
+    plt.ylabel("Precio por m²", fontsize=12)
+    plt.xticks(rotation=45)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Ajustar diseño y mostrar el gráfico
+    plt.tight_layout()
+
+    image_path = upload_image_to_s3(bucket_name, folder_name + "price_evolution.png", plt)
     return image_path
 
 def generate_bar_charts(df, bucket_name, folder_name):
@@ -396,15 +461,18 @@ def generate_bar_charts(df, bucket_name, folder_name):
     df_filtered['price_per_m2'] = df_filtered['price'] / df_filtered['total_area']
     avg_price_per_m2 = df_filtered.groupby('room_category')['price_per_m2'].mean()
 
+    # Definir una lista de colores en un gradiente (modifica los colores como prefieras)
+    colors = ['#FFCAA8', '#87C5EA', '#4A91F1', '#E16D00']
+
     # Gráfico de barras - Promedio de precio por cantidad de ambientes
     plt.figure(figsize=(10, 5))
-    ax = avg_price.plot(kind='bar', color='skyblue', edgecolor='black')
+    ax1 = avg_price.plot(kind='bar', color=[c + '99' for c in colors])  # Agregar leve transparencia
     # Agregar valores encima de cada barra
     for i, value in enumerate(avg_price):
-        ax.text(i, value + (value * 0.02), f'{value:,.0f}', ha='center', fontsize=10, fontweight='bold')
-    plt.title(f'Promedio de Precio por Cantidad de Ambientes para CABA')
-    plt.xlabel('Cantidad de Ambientes')
-    plt.ylabel('Precio Promedio ($)')
+        ax1.text(i, value + (value * 0.01), f'{value:,.2f}', ha='center', fontsize=10)
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(format_yaxis))
+    plt.xlabel('Cantidad de Ambientes', fontsize=12)
+    plt.ylabel('Precio Promedio ($)', fontsize=12)
     plt.xticks(rotation=0)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     image_path_1 = upload_image_to_s3(bucket_name, folder_name + "bar_price_by_amb.png", plt)
@@ -412,13 +480,13 @@ def generate_bar_charts(df, bucket_name, folder_name):
 
     # Gráfico de barras - Precio por metro cuadrado por cantidad de ambientes
     plt.figure(figsize=(10, 5))
-    ax = avg_price_per_m2.plot(kind='bar', color='skyblue', edgecolor='black')
+    ax2 = avg_price_per_m2.plot(kind='bar', color=[c + '99' for c in colors])  # Agregar leve transparencia
     # Agregar valores encima de cada barra
     for i, value in enumerate(avg_price_per_m2):
-        ax.text(i, value + (value * 0.02), f'{value:,.0f}', ha='center', fontsize=10, fontweight='bold')
-    plt.title('Precio por Metro Cuadrado por Cantidad de Ambientes para CABA')
-    plt.xlabel('Cantidad de Ambientes')
-    plt.ylabel('Precio por m² Promedio ($)')
+        ax2.text(i, value + (value * 0.01), f'{value:,.2f}', ha='center', fontsize=10)
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(format_yaxis))
+    plt.xlabel('Cantidad de Ambientes', fontsize=12)
+    plt.ylabel('Precio por m² Promedio ($)', fontsize=12)
     plt.xticks(rotation=0)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     image_path_2 = upload_image_to_s3(bucket_name, folder_name + "bar_m2_price_by_amb.png", plt)
@@ -438,28 +506,31 @@ def generate_bar_charts_neighborhood(df, neighborhood, bucket_name, folder_name)
     df_filtered['price_per_m2'] = df_filtered['price'] / df_filtered['total_area']
     avg_price_per_m2 = df_filtered.groupby('room_category')['price_per_m2'].mean()
 
+    # Definir una lista de colores en un gradiente (modifica los colores como prefieras)
+    colors = ['#FFCAA8', '#87C5EA', '#4A91F1', '#E16D00']
+
     # Gráfico de barras - Promedio de precio por cantidad de ambientes
     plt.figure(figsize=(10, 5))
-    ax = avg_price.plot(kind='bar', color='skyblue', edgecolor='black')
+    ax1 = avg_price.plot(kind='bar', color=[c + '99' for c in colors])  # Agregar leve transparencia
     # Agregar valores encima de cada barra
     for i, value in enumerate(avg_price):
-        ax.text(i, value + (value * 0.02), f'{value:,.0f}', ha='center', fontsize=10, fontweight='bold')
-    plt.title(f'Promedio de Precio por Cantidad de Ambientes para {INPUT_DATA["neighborhood"]}')
-    plt.xlabel('Cantidad de Ambientes')
-    plt.ylabel('Precio Promedio ($)')
+        ax1.text(i, value + (value * 0.01), f'{value:,.2f}', ha='center', fontsize=10)
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(format_yaxis))
+    plt.xlabel('Cantidad de Ambientes', fontsize=12)
+    plt.ylabel('Precio Promedio ($)', fontsize=12)
     plt.xticks(rotation=0)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     image_path_1 = upload_image_to_s3(bucket_name, folder_name + "bar_price_by_amb_neighborhood.png", plt)
 
     # Gráfico de barras - Precio por metro cuadrado por cantidad de ambientes
     plt.figure(figsize=(10, 5))
-    ax = avg_price_per_m2.plot(kind='bar', color='skyblue', edgecolor='black')
+    ax2 = avg_price_per_m2.plot(kind='bar', color=[c + '99' for c in colors])  # Agregar leve transparencia
     # Agregar valores encima de cada barra
     for i, value in enumerate(avg_price_per_m2):
-        ax.text(i, value + (value * 0.02), f'{value:,.0f}', ha='center', fontsize=10, fontweight='bold')
-    plt.title('Precio por Metro Cuadrado por Cantidad de Ambientes para {}'.format(INPUT_DATA["neighborhood"]))
-    plt.xlabel('Cantidad de Ambientes')
-    plt.ylabel('Precio por m² Promedio ($)')
+        ax2.text(i, value + (value * 0.01), f'{value:,.2f}', ha='center', fontsize=10)
+    plt.gca().yaxis.set_major_formatter(FuncFormatter(format_yaxis))
+    plt.xlabel('Cantidad de Ambientes', fontsize=12)
+    plt.ylabel('Precio por m² Promedio ($)', fontsize=12)
     plt.xticks(rotation=0)
     plt.grid(axis='y', linestyle='--', alpha=0.7)
     image_path_2 = upload_image_to_s3(bucket_name, folder_name + "bar_m2_price_by_amb_neighborhood.png", plt)
@@ -716,13 +787,15 @@ output_json_key = folder_name + "output_data.json"
 upload_json_to_s3(BUCKET_NAME, input_json_key, INPUT_DATA)
 upload_json_to_s3(BUCKET_NAME, output_json_key, OUTPUT_DATA_JSON)
 
-price_by_m2_evolution = generate_price_evolution_graph(BUCKET_NAME, folder_name)
+price_by_m2_evolution = generate_price_m2_evolution_graph(BUCKET_NAME, folder_name)
+price_evolution = generate_price_evolution_graph(BUCKET_NAME, folder_name)
 bar_price_by_amb, bar_m2_price_by_amb = generate_bar_charts(df_new, BUCKET_NAME, folder_name)
 bar_price_by_amb_neighborhood, bar_m2_price_by_amb_neighborhood = generate_bar_charts_neighborhood(df_new, INPUT_DATA["neighborhood"], BUCKET_NAME, folder_name)
 pie_property_amb_distribution = generate_pie_charts(df_new, BUCKET_NAME, folder_name)
 pie_property_amb_distribution_neighborhood = generate_pie_charts_neighborhood(df_new, INPUT_DATA["neighborhood"], BUCKET_NAME, folder_name)
 
 OUTPUT_DATA_JSON["price_by_m2_evolution"] = price_by_m2_evolution
+OUTPUT_DATA_JSON["price_evolution"] = price_evolution
 OUTPUT_DATA_JSON["bar_price_by_amb"] = bar_price_by_amb
 OUTPUT_DATA_JSON["bar_m2_price_by_amb"] = bar_m2_price_by_amb
 OUTPUT_DATA_JSON["bar_price_by_amb_neighborhood"] = bar_price_by_amb_neighborhood
