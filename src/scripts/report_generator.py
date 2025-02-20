@@ -59,6 +59,7 @@ OUTPUT_DATA_JSON = {
     "bar_price_by_amb_neighborhood": None,
     "bar_m2_price_by_amb_neighborhood": None,
     "pie_property_amb_distribution": None,
+    "pie_property_m2_distribution_neighborhood": None,
     "bar_price_by_amb_neighborhood": None,
 }
 # Sección Utils
@@ -545,9 +546,9 @@ def generate_pie_charts(df, bucket_name, folder_name):
     # Contar la cantidad de propiedades por categoría de ambientes
     room_distribution = df_filtered['room_category'].value_counts()
 
-    # Función para mostrar tanto el porcentaje como la cantidad
+    # Función para mostrar el porcentaje con el formato deseado
     def autopct_format(pct, all_vals):
-        absolute = int(round(pct/100.*sum(all_vals)))
+        absolute = int(round(pct / 100. * sum(all_vals)))
         return f"{pct:.1f}%\n({absolute})"
 
     # Generar gráfico de torta (pie chart)
@@ -555,11 +556,21 @@ def generate_pie_charts(df, bucket_name, folder_name):
     plt.pie(
         room_distribution, 
         labels=room_distribution.index, 
-        autopct=lambda pct: autopct_format(pct, room_distribution), 
-        colors=['skyblue', 'lightcoral', 'gold', 'lightgreen'], 
-        startangle=140
+        autopct=lambda pct: autopct_format(pct, room_distribution) if pct > 0 else "",  # Solo mostrar si el porcentaje es > 0
+        colors=['#81B4F9', '#F29100', '#F6C75C', '#4A91F1'], 
+        startangle=140,
+        labeldistance=None
     )
-    plt.title(f'Distribución de Propiedades por Cantidad de Ambientes CABA')
+
+    # Cambiamos los textos para que aparezcan en negrita en el gráfico
+    for text in plt.gca().texts:
+        text.set_fontsize(12)  # Tamaño de fuente
+        text.set_fontweight('bold')  # Poner el texto en negrita
+
+    # Agregar leyenda
+    plt.legend(room_distribution.index, title="Cant. de Ambientes", loc="upper left", bbox_to_anchor=(0.8, 1))
+
+    plt.axis('equal')  # Proporción igual para asegurar que el pie se dibuje como un círculo
     image_path = upload_image_to_s3(bucket_name, folder_name + "pie_property_amb_distribution.png", plt)
     return image_path
 
@@ -572,9 +583,9 @@ def generate_pie_charts_neighborhood(df, neighborhood, bucket_name, folder_name)
     # Contar la cantidad de propiedades por categoría de ambientes
     room_distribution = df_filtered['room_category'].value_counts()
 
-    # Función para mostrar tanto el porcentaje como la cantidad
+    # Función para mostrar el porcentaje con el formato deseado
     def autopct_format(pct, all_vals):
-        absolute = int(round(pct/100.*sum(all_vals)))
+        absolute = int(round(pct / 100. * sum(all_vals)))
         return f"{pct:.1f}%\n({absolute})"
 
     # Generar gráfico de torta (pie chart)
@@ -582,12 +593,76 @@ def generate_pie_charts_neighborhood(df, neighborhood, bucket_name, folder_name)
     plt.pie(
         room_distribution, 
         labels=room_distribution.index, 
-        autopct=lambda pct: autopct_format(pct, room_distribution), 
-        colors=['skyblue', 'lightcoral', 'gold', 'lightgreen'], 
-        startangle=140
+        autopct=lambda pct: autopct_format(pct, room_distribution) if pct > 0 else "",  # Solo mostrar si el porcentaje es > 0
+        colors=['#81B4F9', '#F29100', '#F6C75C', '#4A91F1'], 
+        startangle=140,
+        labeldistance=None
     )
-    plt.title(f'Distribución de Propiedades por Cantidad de Ambientes {INPUT_DATA["neighborhood"]}')
+
+    # Cambiamos los textos para que aparezcan en negrita en el gráfico
+    for text in plt.gca().texts:
+        text.set_fontsize(12)  # Tamaño de fuente
+        text.set_fontweight('bold')  # Poner el texto en negrita
+
+    # Agregar leyenda
+    plt.legend(room_distribution.index, title="Cant. de Ambientes", loc="upper left", bbox_to_anchor=(0.8, 1))
+
+    plt.axis('equal')  # Proporción igual para asegurar que el pie se dibuje como un círculo
     image_path = upload_image_to_s3(bucket_name, folder_name + "pie_property_amb_distribution_neighborhood.png", plt)
+    return image_path
+
+def generate_pie_charts_m2_neighborhood(df, neighborhood, bucket_name, folder_name):
+    df_filtered = df[df["normalized_neighborhood"] == neighborhood]
+
+    # Definir las categorías de área
+    def categorize_area(area):
+        if area <= 30:
+            return '0-30 m²'
+        elif area <= 60:
+            return '30-60 m²'
+        elif area <= 100:
+            return '60-100 m²'
+        else:
+            return '>100 m²'
+
+    # Crear una nueva columna con las categorías de área
+    df_filtered['area_category'] = df_filtered['total_area'].apply(categorize_area)
+
+    # Contar la cantidad de propiedades por categoría de área
+    area_distribution = df_filtered['area_category'].value_counts()
+
+    # Definir manualmente el orden deseado
+    desired_order = ['0-30 m²', '30-60 m²', '60-100 m²', '>100 m²']
+
+    # Asegurarse de que las categorías estén en el orden deseado
+    area_distribution = area_distribution.reindex(desired_order).fillna(0)
+
+    # Función para mostrar el porcentaje con el formato deseado
+    def autopct_format(pct, all_vals):
+        absolute = int(round(pct / 100. * sum(all_vals)))
+        return f"{pct:.1f}%\n({absolute})"
+
+    # Generar gráfico de torta (pie chart)
+    plt.figure(figsize=(8, 8))
+    plt.pie(
+        area_distribution, 
+        labels=area_distribution.index, 
+        autopct=lambda pct: autopct_format(pct, area_distribution) if pct > 0 else "",  
+        colors=['#81B4F9', '#F29100', '#F6C75C', '#4A91F1'], 
+        startangle=140,
+        labeldistance=None
+    )
+
+    # Cambiar los textos para poner en negrita
+    for text in plt.gca().texts:
+        text.set_fontsize(12)  
+        text.set_fontweight('bold')  
+
+    # Agregar leyenda en el orden deseado
+    plt.legend(area_distribution.index, title="Rango de m2", loc="upper left", bbox_to_anchor=(0.8, 1))
+
+    plt.axis('equal')
+    image_path = upload_image_to_s3(bucket_name, folder_name + "pie_property_m2_distribution_neighborhood.png", plt)
     return image_path
 
 # Sección lugares cercanos
@@ -793,6 +868,7 @@ bar_price_by_amb, bar_m2_price_by_amb = generate_bar_charts(df_new, BUCKET_NAME,
 bar_price_by_amb_neighborhood, bar_m2_price_by_amb_neighborhood = generate_bar_charts_neighborhood(df_new, INPUT_DATA["neighborhood"], BUCKET_NAME, folder_name)
 pie_property_amb_distribution = generate_pie_charts(df_new, BUCKET_NAME, folder_name)
 pie_property_amb_distribution_neighborhood = generate_pie_charts_neighborhood(df_new, INPUT_DATA["neighborhood"], BUCKET_NAME, folder_name)
+pie_property_m2_distribution_neighborhood = generate_pie_charts_m2_neighborhood(df_new, INPUT_DATA["neighborhood"], BUCKET_NAME, folder_name)
 
 OUTPUT_DATA_JSON["price_by_m2_evolution"] = price_by_m2_evolution
 OUTPUT_DATA_JSON["price_evolution"] = price_evolution
@@ -802,5 +878,6 @@ OUTPUT_DATA_JSON["bar_price_by_amb_neighborhood"] = bar_price_by_amb_neighborhoo
 OUTPUT_DATA_JSON["bar_m2_price_by_amb_neighborhood"] = bar_m2_price_by_amb_neighborhood
 OUTPUT_DATA_JSON["pie_property_amb_distribution"] = pie_property_amb_distribution
 OUTPUT_DATA_JSON["pie_property_amb_distribution_neighborhood"] = pie_property_amb_distribution_neighborhood
+OUTPUT_DATA_JSON["pie_property_m2_distribution_neighborhood"] = pie_property_m2_distribution_neighborhood
 
 print(OUTPUT_DATA_JSON)
