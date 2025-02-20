@@ -1,5 +1,6 @@
 # Custom
 api_logs
+*.csv
 
 # Logs
 logs

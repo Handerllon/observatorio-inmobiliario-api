@@ -22,19 +22,6 @@ warnings.simplefilter(action='ignore', category=Warning)
 
 HISTORIC_FILE_PATH = "/src/scripts/alquilerescaba_202501.xlsx"
 
-"""
-INPUT_DATA = {
-  "total_area": "30-35",
-  "rooms": 1,
-  "bedrooms": 1,
-  "bathroom": 1,
-  "garages": 0,
-  "antiquity": 10,
-  "neighborhood": "CABALLITO",
-  "street": "Felipe Vallese 721",
-}
-"""
-
 OUTPUT_DATA_JSON = {
     "rent_result_min": None,
     "rent_result_max": None,
@@ -701,9 +688,7 @@ def obtener_lugares_cercanos(direccion):
     """ Obtiene los lugares cercanos de interés a una dirección dada """
     coordenadas = obtener_coordenadas(direccion)
     if not coordenadas:
-        print("No se pudo obtener la ubicación.")
-        exit()
-        return
+        return None
 
     lat, lon = coordenadas
 
@@ -812,13 +797,21 @@ newest_files = sorted_files[:2]
 newest_file = newest_files[0]
 previous_file = newest_files[1]
 
-response = s3_client.get_object(Bucket=BUCKET_NAME, Key=newest_file)
-csv_data = response['Body'].read().decode('utf-8')  # Convert bytes to string
-df_new = pd.read_csv(StringIO(csv_data))
+if newest_file.split("/")[-1] not in os.listdir(os.path.abspath(os.getcwd())+"/src/scripts/file_cache"):
+    response = s3_client.get_object(Bucket=BUCKET_NAME, Key=newest_file)
+    csv_data = response['Body'].read().decode('utf-8')  # Convert bytes to string
+    df_new = pd.read_csv(StringIO(csv_data))
+    df_new.to_csv(os.path.abspath(os.getcwd())+"/src/scripts/file_cache/"+newest_file.split("/")[-1], index=False)
+else:
+    df_new = pd.read_csv(os.path.abspath(os.getcwd())+"/src/scripts/file_cache/"+newest_file.split("/")[-1])
 
-response = s3_client.get_object(Bucket=BUCKET_NAME, Key=previous_file)
-csv_data = response['Body'].read().decode('utf-8')  # Convert bytes to string
-df_old = pd.read_csv(StringIO(csv_data))
+if previous_file.split("/")[-1] not in os.listdir(os.path.abspath(os.getcwd())+"/src/scripts/file_cache"):
+    response = s3_client.get_object(Bucket=BUCKET_NAME, Key=previous_file)
+    csv_data = response['Body'].read().decode('utf-8')  # Convert bytes to string
+    df_old = pd.read_csv(StringIO(csv_data))
+    df_old.to_csv(os.path.abspath(os.getcwd())+"/src/scripts/file_cache/"+previous_file.split("/")[-1], index=False)
+else:
+    df_old = pd.read_csv(os.path.abspath(os.getcwd())+"/src/scripts/file_cache/"+previous_file.split("/")[-1])
 
 df_old = clean_data(df_old)
 df_new = clean_data(df_new)
@@ -844,8 +837,19 @@ OUTPUT_DATA_JSON["new_properties_since_last_report_neighborhood"], OUTPUT_DATA_J
 OUTPUT_DATA_JSON["new_properties_since_last_report"], OUTPUT_DATA_JSON["removed_properties_since_last_report"] = calculate_new_and_removed_properties_neighborhood(df_old, df_new)
 
 lugares_cercanos = obtener_lugares_cercanos("{} ,{} ,CABA , Argentina".format(INPUT_DATA["street"], INPUT_DATA["neighborhood"]))
-results = procesar_resultados(lugares_cercanos)
-OUTPUT_DATA_JSON["nearby_places_data"] = results
+
+if lugares_cercanos:
+    results = procesar_resultados(lugares_cercanos)
+    OUTPUT_DATA_JSON["nearby_places_data"] = results
+else:
+    OUTPUT_DATA_JSON["nearby_places_data"] = {
+        "transporte": {"total": 0, "data": []},
+        "sitios_interes": {"total": 0, "data": []},
+        "edificios_administrativos": {"total": 0, "data": []},
+        "instituciones_educativas": {"total": 0, "data": []},
+        "centros_salud": {"total": 0, "data": []},
+        "restaurantes": {"total": 0, "data": []}
+    }
 
 min_m2, max_m2 = INPUT_DATA["total_area"].split("-")
 min_m2 = int(min_m2)

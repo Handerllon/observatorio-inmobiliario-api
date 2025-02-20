@@ -17,17 +17,17 @@ export class RentService {
 			await mkdir(folderPath, { recursive: true })
 
 			// Creamos const para archivo de input
-      const input_filename = `input_data.json`;
+      		const input_filename = `input_data.json`;
 			const output_filename = `output_data.json`;
 
-      await writeFile(`${folderPath}/${input_filename}`, JSON.stringify(body));
+      		await writeFile(`${folderPath}/${input_filename}`, JSON.stringify(body));
 
 			const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
 			await sleep(3000)
 
-	  	const result = await exec.execSync(
-        `python3 ${this.script_folder}/report_generator.py ${folderPath}/${input_filename}`
-      );
+			const result = await exec.execSync(
+				`python3 ${this.script_folder}/report_generator.py ${folderPath}/${input_filename}`
+			);
 
 			await writeFile(`${folderPath}/${output_filename}`, JSON.stringify(result.toString()));
 
