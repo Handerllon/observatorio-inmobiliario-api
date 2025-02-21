@@ -794,9 +794,13 @@ for file in files["Contents"]:
 sorted_files = sorted(sub_files, key=extract_date, reverse=True)
 newest_files = sorted_files[:2]
 
-newest_file = newest_files[0]
-previous_file = newest_files[1]
+#newest_file = newest_files[0]
+#previous_file = newest_files[1]
 
+df_new = pd.read_csv(os.path.abspath(os.getcwd())+"/src/scripts/file_cache/STG_ZonaProp_12022025.csv")
+df_old = pd.read_csv(os.path.abspath(os.getcwd())+"/src/scripts/file_cache/STG_ZonaProp_04022025.csv")
+
+"""
 if newest_file.split("/")[-1] not in os.listdir(os.path.abspath(os.getcwd())+"/src/scripts/file_cache"):
     response = s3_client.get_object(Bucket=BUCKET_NAME, Key=newest_file)
     csv_data = response['Body'].read().decode('utf-8')  # Convert bytes to string
@@ -812,6 +816,7 @@ if previous_file.split("/")[-1] not in os.listdir(os.path.abspath(os.getcwd())+"
     df_old.to_csv(os.path.abspath(os.getcwd())+"/src/scripts/file_cache/"+previous_file.split("/")[-1], index=False)
 else:
     df_old = pd.read_csv(os.path.abspath(os.getcwd())+"/src/scripts/file_cache/"+previous_file.split("/")[-1])
+"""
 
 df_old = clean_data(df_old)
 df_new = clean_data(df_new)
