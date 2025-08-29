@@ -1,10 +1,13 @@
 import * as express from "express";
 import * as cors from "cors";
 import * as dotenv from "dotenv";
+import { DataSource } from "typeorm";
+import { AppDataSource } from "./DataSource";
 import bodyParser = require("body-parser");
 import path = require("path");
 import "reflect-metadata";
 import { RentRouter } from "./routes/RentRouter";
+
 
 class App {
   public app: express.Application;
@@ -47,6 +50,12 @@ class App {
     this.app.use(cors());
 
     new RentRouter().routes(this.router);
+  }
+
+  private initializeDatabase() {
+    // initialize database
+    const PostgresDataSource: DataSource = AppDataSource;
+    PostgresDataSource.initialize();
   }
 
   public listen(): void {
