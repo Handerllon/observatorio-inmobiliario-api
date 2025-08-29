@@ -13,10 +13,10 @@ var port
 var database
 
 // Username, password and host configuration
-user = process.env.TEST_DB_USERNAME
-pass = process.env.TEST_DB_PASSWORD
-host = process.env.TEST_DB_HOST
-port = parseInt(process.env.TEST_DB_PORT)
+user = process.env.DB_USERNAME
+pass = process.env.DB_PASSWORD
+host = process.env.DB_HOST
+port = parseInt(process.env.DB_PORT)
 database = "observatorio_inmobiliario"
 
 
