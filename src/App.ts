@@ -7,6 +7,7 @@ import bodyParser = require("body-parser");
 import path = require("path");
 import "reflect-metadata";
 import { RentRouter } from "./routes/RentRouter";
+import { UserRouter } from "./routes/UserRouter";
 
 
 class App {
@@ -50,6 +51,7 @@ class App {
     this.app.use(cors());
 
     new RentRouter().routes(this.router);
+    new UserRouter().routes(this.router);
   }
 
   private initializeDatabase() {

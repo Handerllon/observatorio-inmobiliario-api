@@ -28,7 +28,7 @@ const AppDataSource = new DataSource({
     username: user,
     password: pass,
     database: database,
-    entities: ["src/**/*.entity.ts"],
+    entities: ["src/entities/**/*.entity.ts"],
     migrations: ["src/migration/**/*.ts"],
     subscribers: ["src/subscriber/**/*.ts"],
     synchronize: true
