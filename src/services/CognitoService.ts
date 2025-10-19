@@ -34,6 +34,7 @@ export interface RegisterDto {
   lastName: string;
   email: string;
   password: string;
+  userType?: "Propietario" | "Agente" | "Inquilino";
 }
 
 export interface LoginDto {
@@ -102,24 +103,34 @@ export class CognitoService {
   async register(userData: RegisterDto): Promise<CognitoResponse> {
     try {
       const username = userData.email.toLowerCase();
+      const userAttributes: Array<{ Name: string; Value: string }> = [
+        {
+          Name: "email",
+          Value: username,
+        },
+        {
+          Name: "given_name",
+          Value: userData.firstName,
+        },
+        {
+          Name: "family_name",
+          Value: userData.lastName,
+        },
+      ];
+
+      // Agregar user_type si se proporciona
+      if (userData.userType) {
+        userAttributes.push({
+          Name: "custom:user_type",
+          Value: userData.userType,
+        });
+      }
+
       const params: any = {
         ClientId: this.config.clientId,
         Username: username,
         Password: userData.password,
-        UserAttributes: [
-          {
-            Name: "email",
-            Value: username,
-          },
-          {
-            Name: "given_name",
-            Value: userData.firstName,
-          },
-          {
-            Name: "family_name",
-            Value: userData.lastName,
-          },
-        ],
+        UserAttributes: userAttributes,
       };
 
       // Agregar SECRET_HASH si el client tiene secret configurado

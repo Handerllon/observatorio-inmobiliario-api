@@ -19,6 +19,7 @@ export interface CognitoUser {
   family_name?: string;
   groups?: string[]; // Grupos de Cognito (roles)
   username: string;
+  user_type?: "Propietario" | "Agente" | "Inquilino"; // Tipo de usuario personalizado
 }
 
 export class CognitoMiddleware {
@@ -89,6 +90,7 @@ export class CognitoMiddleware {
         family_name: payload.family_name,
         groups: payload["cognito:groups"] || [],
         username: payload.username,
+        user_type: payload["custom:user_type"] as "Propietario" | "Agente" | "Inquilino" | undefined,
       };
 
       // Añadir el usuario y payload completo al request
@@ -185,6 +187,7 @@ export class CognitoMiddleware {
         family_name: payload.family_name,
         groups: payload["cognito:groups"] || [],
         username: payload.username,
+        user_type: payload["custom:user_type"] as "Propietario" | "Agente" | "Inquilino" | undefined,
       };
 
       req.user = user;

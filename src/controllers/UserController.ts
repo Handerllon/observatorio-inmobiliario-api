@@ -19,6 +19,14 @@ export class UserController {
         });
       }
 
+      // Validar userType si se proporciona
+      if (userData.userType && !["Propietario", "Agente", "Inquilino"].includes(userData.userType)) {
+        return res.status(400).json({
+          success: false,
+          message: "userType debe ser 'Propietario', 'Agente' o 'Inquilino'"
+        });
+      }
+
       const result = await UserController.cognitoService.register(userData);
       
       const statusCode = result.success ? 201 : 400;
@@ -83,7 +91,8 @@ export class UserController {
           lastName: user.family_name,
           username: user.username,
           groups: user.groups,
-          emailVerified: user.email_verified
+          emailVerified: user.email_verified,
+          userType: user.user_type
         }
       });
 
@@ -109,11 +118,20 @@ export class UserController {
         });
       }
 
+      // Validar userType si se proporciona
+      if (updateData.userType && !["Propietario", "Agente", "Inquilino"].includes(updateData.userType)) {
+        return res.status(400).json({
+          success: false,
+          message: "userType debe ser 'Propietario', 'Agente' o 'Inquilino'"
+        });
+      }
+
       // Construir atributos para actualizar en Cognito
       const attributes: { [key: string]: string } = {};
       if (updateData.firstName) attributes.given_name = updateData.firstName;
       if (updateData.lastName) attributes.family_name = updateData.lastName;
       if (updateData.email) attributes.email = updateData.email;
+      if (updateData.userType) attributes["custom:user_type"] = updateData.userType;
 
       const result = await UserController.cognitoService.adminUpdateUserAttributes(
         user.username,
@@ -240,11 +258,20 @@ export class UserController {
         });
       }
 
+      // Validar userType si se proporciona
+      if (updateData.userType && !["Propietario", "Agente", "Inquilino"].includes(updateData.userType)) {
+        return res.status(400).json({
+          success: false,
+          message: "userType debe ser 'Propietario', 'Agente' o 'Inquilino'"
+        });
+      }
+
       // Construir atributos para actualizar
       const attributes: { [key: string]: string } = {};
       if (updateData.firstName) attributes.given_name = updateData.firstName;
       if (updateData.lastName) attributes.family_name = updateData.lastName;
       if (updateData.email) attributes.email = updateData.email;
+      if (updateData.userType) attributes["custom:user_type"] = updateData.userType;
 
       const result = await UserController.cognitoService.adminUpdateUserAttributes(
         id,
@@ -314,7 +341,8 @@ export class UserController {
           lastName: user?.family_name,
           username: user?.username,
           groups: user?.groups,
-          emailVerified: user?.email_verified
+          emailVerified: user?.email_verified,
+          userType: user?.user_type
         }
       });
 
