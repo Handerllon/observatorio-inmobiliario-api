@@ -28,7 +28,7 @@ export class CognitoMiddleware {
    * Inicializar el verificador de JWT de Cognito
    */
   private static initVerifier() {
-    if (!this.verifier) {
+    if (!CognitoMiddleware.verifier) {
       const userPoolId = process.env.COGNITO_USER_POOL_ID;
       const clientId = process.env.COGNITO_CLIENT_ID;
       const region = process.env.AWS_REGION || "us-east-1";
@@ -40,13 +40,13 @@ export class CognitoMiddleware {
       }
 
       // Crear verificador para Access Tokens
-      this.verifier = CognitoJwtVerifier.create({
+      CognitoMiddleware.verifier = CognitoJwtVerifier.create({
         userPoolId: userPoolId,
         tokenUse: "access",
         clientId: clientId,
       });
     }
-    return this.verifier;
+    return CognitoMiddleware.verifier;
   }
 
   /**
@@ -77,7 +77,7 @@ export class CognitoMiddleware {
       }
 
       // Verificar el token con AWS Cognito
-      const verifier = this.initVerifier();
+      const verifier = CognitoMiddleware.initVerifier();
       const payload = await verifier.verify(token);
 
       // Extraer información del usuario del token
@@ -174,7 +174,7 @@ export class CognitoMiddleware {
       }
 
       // Intentar verificar el token
-      const verifier = this.initVerifier();
+      const verifier = CognitoMiddleware.initVerifier();
       const payload = await verifier.verify(token);
 
       const user: CognitoUser = {
@@ -211,7 +211,7 @@ export class CognitoMiddleware {
    * Helper para verificar si el usuario es admin
    */
   static isAdmin(user: CognitoUser | undefined): boolean {
-    return this.hasRole(user, "admin");
+    return CognitoMiddleware.hasRole(user, "admin");
   }
 }
 
