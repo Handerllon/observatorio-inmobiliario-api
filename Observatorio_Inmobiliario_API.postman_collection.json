@@ -1,8 +1,8 @@
 {
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
-		"name": "Observatorio Inmobiliario API",
-		"description": "Colección completa para la API del Observatorio Inmobiliario con funcionalidades de usuarios, autenticación JWT y predicción de rentas.",
+		"name": "Observatorio Inmobiliario API - AWS Cognito",
+		"description": "Colección completa para la API del Observatorio Inmobiliario con autenticación mediante AWS Cognito, gestión de usuarios y predicción de rentas.",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -19,9 +19,8 @@
 								"exec": [
 									"if (pm.response.code === 201) {",
 									"    const responseJson = pm.response.json();",
-									"    if (responseJson.token) {",
-									"        pm.environment.set('auth_token', responseJson.token);",
-									"        pm.environment.set('user_id', responseJson.user.id);",
+									"    if (responseJson.data && responseJson.data.userSub) {",
+									"        pm.environment.set('user_sub', responseJson.data.userSub);",
 									"    }",
 									"}",
 									"",
@@ -34,9 +33,9 @@
 									"    pm.expect(responseJson.success).to.be.true;",
 									"});",
 									"",
-									"pm.test('Response contains token', function () {",
+									"pm.test('User needs email confirmation', function () {",
 									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson.token).to.not.be.undefined;",
+									"    pm.expect(responseJson.message).to.include('verifica tu email');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -54,7 +53,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"firstName\": \"Juan\",\n    \"lastName\": \"Pérez\",\n    \"email\": \"juan.perez@example.com\",\n    \"password\": \"password123\",\n    \"role\": \"user\"\n}"
+							"raw": "{\n    \"firstName\": \"Juan\",\n    \"lastName\": \"Pérez\",\n    \"email\": \"juan.perez@example.com\",\n    \"password\": \"Password123!\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/users/register",
@@ -65,7 +64,60 @@
 								"users",
 								"register"
 							]
+						},
+						"description": "Registra un nuevo usuario en AWS Cognito. Requiere confirmación de email posterior."
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Registration",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('Email verified successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include('verificado');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
 						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"juan.perez@example.com\",\n    \"confirmationCode\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/confirm",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"confirm"
+							]
+						},
+						"description": "Confirma el registro del usuario con el código enviado por email."
 					},
 					"response": []
 				},
@@ -78,9 +130,14 @@
 								"exec": [
 									"if (pm.response.code === 200) {",
 									"    const responseJson = pm.response.json();",
-									"    if (responseJson.token) {",
-									"        pm.environment.set('auth_token', responseJson.token);",
-									"        pm.environment.set('user_id', responseJson.user.id);",
+									"    if (responseJson.accessToken) {",
+									"        pm.environment.set('access_token', responseJson.accessToken);",
+									"        pm.environment.set('id_token', responseJson.idToken);",
+									"        pm.environment.set('refresh_token', responseJson.refreshToken);",
+									"    }",
+									"    if (responseJson.data && responseJson.data.payload) {",
+									"        pm.environment.set('user_sub', responseJson.data.payload.sub);",
+									"        pm.environment.set('user_email', responseJson.data.payload.email);",
 									"    }",
 									"}",
 									"",
@@ -93,9 +150,11 @@
 									"    pm.expect(responseJson.success).to.be.true;",
 									"});",
 									"",
-									"pm.test('Response contains token', function () {",
+									"pm.test('Response contains Cognito tokens', function () {",
 									"    const responseJson = pm.response.json();",
-									"    pm.expect(responseJson.token).to.not.be.undefined;",
+									"    pm.expect(responseJson.accessToken).to.not.be.undefined;",
+									"    pm.expect(responseJson.idToken).to.not.be.undefined;",
+									"    pm.expect(responseJson.refreshToken).to.not.be.undefined;",
 									"});"
 								],
 								"type": "text/javascript"
@@ -113,7 +172,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"email\": \"juan.perez@example.com\",\n    \"password\": \"password123\"\n}"
+							"raw": "{\n    \"email\": \"juan.perez@example.com\",\n    \"password\": \"Password123!\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/users/login",
@@ -124,7 +183,112 @@
 								"users",
 								"login"
 							]
+						},
+						"description": "Inicia sesión con AWS Cognito. Retorna accessToken, idToken y refreshToken."
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('Verification code sent', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include('código de verificación');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
 						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"juan.perez@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/forgot-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"forgot-password"
+							]
+						},
+						"description": "Inicia el proceso de recuperación de contraseña. Envía un código por email."
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Forgot Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('Password reset successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include('restablecida');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"juan.perez@example.com\",\n    \"confirmationCode\": \"123456\",\n    \"newPassword\": \"NewPassword123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/confirm-forgot-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"confirm-forgot-password"
+							]
+						},
+						"description": "Confirma la nueva contraseña con el código de verificación recibido por email."
 					},
 					"response": []
 				},
@@ -143,6 +307,12 @@
 									"    const responseJson = pm.response.json();",
 									"    pm.expect(responseJson.success).to.be.true;",
 									"    pm.expect(responseJson.message).to.include('Token válido');",
+									"});",
+									"",
+									"pm.test('Response contains user info', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.user).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.email).to.not.be.undefined;",
 									"});"
 								],
 								"type": "text/javascript"
@@ -154,7 +324,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
+								"value": "Bearer {{access_token}}",
 								"type": "text"
 							}
 						],
@@ -167,12 +337,63 @@
 								"users",
 								"validate-token"
 							]
+						},
+						"description": "Valida el access token de AWS Cognito y retorna información del usuario."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.environment.unset('access_token');",
+									"    pm.environment.unset('id_token');",
+									"    pm.environment.unset('refresh_token');",
+									"}",
+									"",
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Logout successful', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.message).to.include('cerrada');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
 						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"logout"
+							]
+						},
+						"description": "Cierra la sesión del usuario en todos los dispositivos (global sign out)."
 					},
 					"response": []
 				}
 			],
-			"description": "Endpoints para autenticación de usuarios"
+			"description": "Endpoints para autenticación de usuarios con AWS Cognito"
 		},
 		{
 			"name": "User Profile Management",
@@ -193,6 +414,13 @@
 									"    pm.expect(responseJson.success).to.be.true;",
 									"    pm.expect(responseJson.user).to.not.be.undefined;",
 									"    pm.expect(responseJson.user.email).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.id).to.not.be.undefined;",
+									"});",
+									"",
+									"pm.test('User has Cognito attributes', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.user.username).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.groups).to.be.an('array');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -204,7 +432,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
+								"value": "Bearer {{access_token}}",
 								"type": "text"
 							}
 						],
@@ -217,7 +445,8 @@
 								"users",
 								"profile"
 							]
-						}
+						},
+						"description": "Obtiene el perfil del usuario autenticado desde AWS Cognito."
 					},
 					"response": []
 				},
@@ -247,7 +476,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
+								"value": "Bearer {{access_token}}",
 								"type": "text"
 							},
 							{
@@ -258,7 +487,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"firstName\": \"Juan Carlos\",\n    \"lastName\": \"Pérez González\"\n}"
+							"raw": "{\n    \"firstName\": \"Juan Carlos\",\n    \"lastName\": \"Pérez González\",\n    \"email\": \"juancarlos@example.com\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/users/profile",
@@ -269,7 +498,8 @@
 								"users",
 								"profile"
 							]
-						}
+						},
+						"description": "Actualiza el perfil del usuario autenticado en AWS Cognito."
 					},
 					"response": []
 				},
@@ -299,7 +529,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
+								"value": "Bearer {{access_token}}",
 								"type": "text"
 							},
 							{
@@ -310,7 +540,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"oldPassword\": \"password123\",\n    \"newPassword\": \"newPassword456\"\n}"
+							"raw": "{\n    \"oldPassword\": \"Password123!\",\n    \"newPassword\": \"NewPassword456!\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/users/change-password",
@@ -321,7 +551,8 @@
 								"users",
 								"change-password"
 							]
-						}
+						},
+						"description": "Cambia la contraseña del usuario autenticado en AWS Cognito."
 					},
 					"response": []
 				}
@@ -358,7 +589,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
+								"value": "Bearer {{access_token}}",
 								"type": "text"
 							}
 						],
@@ -370,12 +601,13 @@
 							"path": [
 								"users"
 							]
-						}
+						},
+						"description": "Lista todos los usuarios (requiere grupo admin en Cognito). Lista desde base de datos local."
 					},
 					"response": []
 				},
 				{
-					"name": "Get User By ID (Admin)",
+					"name": "Get User By Username (Admin)",
 					"event": [
 						{
 							"listen": "test",
@@ -400,25 +632,26 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
+								"value": "Bearer {{access_token}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/users/{{user_id}}",
+							"raw": "{{base_url}}/users/{{username}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"users",
-								"{{user_id}}"
+								"{{username}}"
 							]
-						}
+						},
+						"description": "Obtiene un usuario por su username desde AWS Cognito (requiere grupo admin)."
 					},
 					"response": []
 				},
 				{
-					"name": "Update User By ID (Admin)",
+					"name": "Update User By Username (Admin)",
 					"event": [
 						{
 							"listen": "test",
@@ -442,7 +675,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
+								"value": "Bearer {{access_token}}",
 								"type": "text"
 							},
 							{
@@ -453,23 +686,24 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"role\": \"admin\",\n    \"isActive\": true\n}"
+							"raw": "{\n    \"firstName\": \"Nombre Actualizado\",\n    \"lastName\": \"Apellido Actualizado\",\n    \"email\": \"nuevo@example.com\"\n}"
 						},
 						"url": {
-							"raw": "{{base_url}}/users/{{user_id}}",
+							"raw": "{{base_url}}/users/{{username}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"users",
-								"{{user_id}}"
+								"{{username}}"
 							]
-						}
+						},
+						"description": "Actualiza atributos de un usuario en AWS Cognito (requiere grupo admin)."
 					},
 					"response": []
 				},
 				{
-					"name": "Delete User (Admin)",
+					"name": "Disable User (Admin)",
 					"event": [
 						{
 							"listen": "test",
@@ -479,10 +713,10 @@
 									"    pm.response.to.have.status(200);",
 									"});",
 									"",
-									"pm.test('User deleted successfully', function () {",
+									"pm.test('User disabled successfully', function () {",
 									"    const responseJson = pm.response.json();",
 									"    pm.expect(responseJson.success).to.be.true;",
-									"    pm.expect(responseJson.message).to.include('eliminado');",
+									"    pm.expect(responseJson.message).to.include('deshabilitado');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -494,25 +728,26 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{auth_token}}",
+								"value": "Bearer {{access_token}}",
 								"type": "text"
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/users/{{user_id}}",
+							"raw": "{{base_url}}/users/{{username}}",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"users",
-								"{{user_id}}"
+								"{{username}}"
 							]
-						}
+						},
+						"description": "Deshabilita un usuario en AWS Cognito (requiere grupo admin). No elimina permanentemente."
 					},
 					"response": []
 				}
 			],
-			"description": "Endpoints de administración de usuarios (requieren rol admin)"
+			"description": "Endpoints de administración de usuarios (requieren grupo admin de Cognito)"
 		},
 		{
 			"name": "Rent Management",
@@ -558,7 +793,8 @@
 							"path": [
 								"rent"
 							]
-						}
+						},
+						"description": "Endpoint de prueba para rentas."
 					},
 					"response": []
 				},
@@ -604,7 +840,8 @@
 								"rent",
 								"predict"
 							]
-						}
+						},
+						"description": "Predice el precio de renta de una propiedad basándose en sus características."
 					},
 					"response": []
 				}
@@ -639,14 +876,40 @@
 			"type": "string"
 		},
 		{
-			"key": "auth_token",
+			"key": "access_token",
 			"value": "",
-			"type": "string"
+			"type": "string",
+			"description": "AWS Cognito Access Token (obtenido del login)"
 		},
 		{
-			"key": "user_id",
+			"key": "id_token",
 			"value": "",
-			"type": "string"
+			"type": "string",
+			"description": "AWS Cognito ID Token (contiene información del usuario)"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string",
+			"description": "AWS Cognito Refresh Token (para renovar access token)"
+		},
+		{
+			"key": "user_sub",
+			"value": "",
+			"type": "string",
+			"description": "ID único del usuario en AWS Cognito (sub claim)"
+		},
+		{
+			"key": "user_email",
+			"value": "",
+			"type": "string",
+			"description": "Email del usuario autenticado"
+		},
+		{
+			"key": "username",
+			"value": "",
+			"type": "string",
+			"description": "Username del usuario en Cognito (para endpoints de admin)"
 		}
 	]
-} 
+}

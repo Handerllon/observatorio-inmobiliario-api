@@ -20,6 +20,7 @@ import {
   CognitoUserPool,
   CognitoUserAttribute,
 } from "amazon-cognito-identity-js";
+import * as crypto from "crypto";
 
 export interface CognitoConfig {
   region: string;
@@ -80,18 +81,35 @@ export class CognitoService {
   }
 
   /**
+   * Calcula el SECRET_HASH requerido por Cognito cuando el App Client tiene secret
+   * @param username Email o username del usuario
+   * @returns SECRET_HASH calculado con HMAC-SHA256
+   */
+  private calculateSecretHash(username: string): string {
+    if (!this.config.clientSecret) {
+      return "";
+    }
+
+    const message = username + this.config.clientId;
+    const hmac = crypto.createHmac("sha256", this.config.clientSecret);
+    hmac.update(message);
+    return hmac.digest("base64");
+  }
+
+  /**
    * Registrar un nuevo usuario en Cognito
    */
   async register(userData: RegisterDto): Promise<CognitoResponse> {
     try {
-      const params = {
+      const username = userData.email.toLowerCase();
+      const params: any = {
         ClientId: this.config.clientId,
-        Username: userData.email.toLowerCase(),
+        Username: username,
         Password: userData.password,
         UserAttributes: [
           {
             Name: "email",
-            Value: userData.email.toLowerCase(),
+            Value: username,
           },
           {
             Name: "given_name",
@@ -103,6 +121,11 @@ export class CognitoService {
           },
         ],
       };
+
+      // Agregar SECRET_HASH si el client tiene secret configurado
+      if (this.config.clientSecret) {
+        params.SecretHash = this.calculateSecretHash(username);
+      }
 
       const command = new SignUpCommand(params);
       const response = await this.client.send(command);
@@ -132,12 +155,19 @@ export class CognitoService {
     confirmationCode: string
   ): Promise<CognitoResponse> {
     try {
-      const command = new ConfirmSignUpCommand({
+      const username = email.toLowerCase();
+      const params: any = {
         ClientId: this.config.clientId,
-        Username: email.toLowerCase(),
+        Username: username,
         ConfirmationCode: confirmationCode,
-      });
+      };
 
+      // Agregar SECRET_HASH si el client tiene secret configurado
+      if (this.config.clientSecret) {
+        params.SecretHash = this.calculateSecretHash(username);
+      }
+
+      const command = new ConfirmSignUpCommand(params);
       await this.client.send(command);
 
       return {
@@ -157,52 +187,50 @@ export class CognitoService {
    * Iniciar sesión con usuario y contraseña
    */
   async login(loginData: LoginDto): Promise<CognitoResponse> {
-    return new Promise((resolve) => {
-      const authenticationData = {
-        Username: loginData.email.toLowerCase(),
-        Password: loginData.password,
+    try {
+      const username = loginData.email.toLowerCase();
+      const params: any = {
+        AuthFlow: "USER_PASSWORD_AUTH",
+        ClientId: this.config.clientId,
+        AuthParameters: {
+          USERNAME: username,
+          PASSWORD: loginData.password,
+        },
       };
 
-      const authenticationDetails = new AuthenticationDetails(
-        authenticationData
-      );
+      // Agregar SECRET_HASH si el client tiene secret configurado
+      if (this.config.clientSecret) {
+        params.AuthParameters.SECRET_HASH = this.calculateSecretHash(username);
+      }
 
-      const userData = {
-        Username: loginData.email.toLowerCase(),
-        Pool: this.userPool,
+      const command = new InitiateAuthCommand(params);
+      const response = await this.client.send(command);
+
+      if (!response.AuthenticationResult) {
+        return {
+          success: false,
+          message: "Error en autenticación",
+        };
+      }
+
+      return {
+        success: true,
+        message: "Login exitoso",
+        accessToken: response.AuthenticationResult.AccessToken || "",
+        idToken: response.AuthenticationResult.IdToken || "",
+        refreshToken: response.AuthenticationResult.RefreshToken || "",
+        data: {
+          expiresIn: response.AuthenticationResult.ExpiresIn,
+          tokenType: response.AuthenticationResult.TokenType,
+        },
       };
-
-      const cognitoUser = new CognitoUser(userData);
-
-      cognitoUser.authenticateUser(authenticationDetails, {
-        onSuccess: (result) => {
-          resolve({
-            success: true,
-            message: "Login exitoso",
-            accessToken: result.getAccessToken().getJwtToken(),
-            idToken: result.getIdToken().getJwtToken(),
-            refreshToken: result.getRefreshToken().getToken(),
-            data: {
-              payload: result.getIdToken().payload,
-            },
-          });
-        },
-        onFailure: (error) => {
-          console.error("Error en login:", error);
-          resolve({
-            success: false,
-            message: this.parseErrorMessage(error),
-          });
-        },
-        newPasswordRequired: (userAttributes, requiredAttributes) => {
-          resolve({
-            success: false,
-            message: "Se requiere cambio de contraseña",
-            data: { userAttributes, requiredAttributes },
-          });
-        },
-      });
-    });
+    } catch (error: any) {
+      console.error("Error en login:", error);
+      return {
+        success: false,
+        message: this.parseErrorMessage(error),
+      };
+    }
   }
 
   /**
@@ -274,11 +302,18 @@ export class CognitoService {
    */
   async forgotPassword(email: string): Promise<CognitoResponse> {
     try {
-      const command = new ForgotPasswordCommand({
+      const username = email.toLowerCase();
+      const params: any = {
         ClientId: this.config.clientId,
-        Username: email.toLowerCase(),
-      });
+        Username: username,
+      };
 
+      // Agregar SECRET_HASH si el client tiene secret configurado
+      if (this.config.clientSecret) {
+        params.SecretHash = this.calculateSecretHash(username);
+      }
+
+      const command = new ForgotPasswordCommand(params);
       await this.client.send(command);
 
       return {
@@ -304,13 +339,20 @@ export class CognitoService {
     newPassword: string
   ): Promise<CognitoResponse> {
     try {
-      const command = new ConfirmForgotPasswordCommand({
+      const username = email.toLowerCase();
+      const params: any = {
         ClientId: this.config.clientId,
-        Username: email.toLowerCase(),
+        Username: username,
         ConfirmationCode: confirmationCode,
         Password: newPassword,
-      });
+      };
 
+      // Agregar SECRET_HASH si el client tiene secret configurado
+      if (this.config.clientSecret) {
+        params.SecretHash = this.calculateSecretHash(username);
+      }
+
+      const command = new ConfirmForgotPasswordCommand(params);
       await this.client.send(command);
 
       return {
