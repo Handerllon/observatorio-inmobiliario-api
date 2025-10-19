@@ -7,6 +7,10 @@ export class User {
   @PrimaryGeneratedColumn("uuid")
   id: string;
 
+  // Cognito Sub (ID único del usuario en AWS Cognito)
+  @Column({ type: "varchar", length: 255, unique: true, nullable: true })
+  cognitoSub: string;
+
   @Column({ type: "varchar", length: 100 })
   @IsNotEmpty({ message: "El nombre no puede estar vacío" })
   firstName: string;
@@ -20,7 +24,8 @@ export class User {
   @IsNotEmpty({ message: "El email no puede estar vacío" })
   email: string;
 
-  @Column({ type: "varchar", length: 255 })
+  // Password es nullable ahora porque Cognito maneja las contraseñas
+  @Column({ type: "varchar", length: 255, nullable: true })
   @IsNotEmpty({ message: "La contraseña no puede estar vacía" })
   @MinLength(6, { message: "La contraseña debe tener al menos 6 caracteres" })
   password: string;

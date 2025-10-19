@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { UserController } from "../controllers/UserController";
-import { AuthMiddleware } from "../middleware/auth.middleware";
+import { CognitoMiddleware } from "../middleware/cognito.middleware";
 
 export class UserRouter {
   private controller: UserController;
@@ -14,58 +14,67 @@ export class UserRouter {
     // Rutas públicas (no requieren autenticación)
     router.post(`${this.prefix}/register`, this.controller.register);
     router.post(`${this.prefix}/login`, this.controller.login);
+    router.post(`${this.prefix}/confirm`, this.controller.confirmSignUp);
+    router.post(`${this.prefix}/forgot-password`, this.controller.forgotPassword);
+    router.post(`${this.prefix}/confirm-forgot-password`, this.controller.confirmForgotPassword);
 
-    // Rutas que requieren autenticación
+    // Rutas que requieren autenticación con Cognito
     router.get(
       `${this.prefix}/profile`, 
-      AuthMiddleware.authenticate, 
+      CognitoMiddleware.authenticate, 
       this.controller.getProfile
     );
     
     router.put(
       `${this.prefix}/profile`, 
-      AuthMiddleware.authenticate, 
+      CognitoMiddleware.authenticate, 
       this.controller.updateProfile
     );
     
     router.post(
       `${this.prefix}/change-password`, 
-      AuthMiddleware.authenticate, 
+      CognitoMiddleware.authenticate, 
       this.controller.changePassword
     );
     
     router.get(
       `${this.prefix}/validate-token`, 
-      AuthMiddleware.authenticate, 
+      CognitoMiddleware.authenticate, 
       this.controller.validateToken
     );
 
-    // Rutas de administración (requieren autenticación y rol admin)
+    router.post(
+      `${this.prefix}/logout`, 
+      CognitoMiddleware.authenticate, 
+      this.controller.logout
+    );
+
+    // Rutas de administración (requieren autenticación y grupo admin de Cognito)
     router.get(
       `${this.prefix}`, 
-      AuthMiddleware.authenticate, 
-      AuthMiddleware.authorize(["admin"]), 
+      CognitoMiddleware.authenticate, 
+      CognitoMiddleware.authorize(["admin"]), 
       this.controller.getAllUsers
     );
     
     router.get(
       `${this.prefix}/:id`, 
-      AuthMiddleware.authenticate, 
-      AuthMiddleware.authorize(["admin"]), 
+      CognitoMiddleware.authenticate, 
+      CognitoMiddleware.authorize(["admin"]), 
       this.controller.getUserById
     );
     
     router.put(
       `${this.prefix}/:id`, 
-      AuthMiddleware.authenticate, 
-      AuthMiddleware.authorize(["admin"]), 
+      CognitoMiddleware.authenticate, 
+      CognitoMiddleware.authorize(["admin"]), 
       this.controller.updateUser
     );
     
     router.delete(
       `${this.prefix}/:id`, 
-      AuthMiddleware.authenticate, 
-      AuthMiddleware.authorize(["admin"]), 
+      CognitoMiddleware.authenticate, 
+      CognitoMiddleware.authorize(["admin"]), 
       this.controller.deleteUser
     );
   }
