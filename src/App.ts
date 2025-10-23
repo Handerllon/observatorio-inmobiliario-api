@@ -8,6 +8,7 @@ import path = require("path");
 import "reflect-metadata";
 import { RentRouter } from "./routes/RentRouter";
 import { UserRouter } from "./routes/UserRouter";
+import { RentPredictionRouter } from "./routes/RentPredictionRouter";
 
 
 class App {
@@ -52,6 +53,7 @@ class App {
 
     new RentRouter().routes(this.router);
     new UserRouter().routes(this.router);
+    new RentPredictionRouter().routes(this.router);
   }
 
   private initializeDatabase() {
