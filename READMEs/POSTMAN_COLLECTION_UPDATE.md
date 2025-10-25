@@ -1,356 +1,373 @@
-# 📬 Actualización de Colección Postman - Historial de Predicciones
+# 📮 Actualización de Colección Postman
 
-## 🆕 Nueva Carpeta: "Prediction History"
+## Resumen
 
-Se agregó una nueva carpeta con **9 endpoints** para la gestión completa del historial de predicciones.
-
-### 📋 Endpoints Agregados
-
-#### 1. **GET /predictions** - Listar Todas las Predicciones
-```
-GET {{base_url}}/predictions
-Authorization: Bearer {{access_token}}
-```
-- Obtiene todas las predicciones del usuario autenticado
-- Ordenadas por fecha (más recientes primero)
-- Retorna array de predicciones con total
-
-#### 2. **GET /predictions?filters** - Listar con Filtros
-```
-GET {{base_url}}/predictions?barrio=Palermo&dormitorios=2&status=success&isFavorite=true
-Authorization: Bearer {{access_token}}
-```
-**Query Parameters disponibles:**
-- `barrio` - Filtrar por barrio
-- `dormitorios` - Filtrar por cantidad de dormitorios  
-- `status` - success, error, pending
-- `isFavorite` - true/false (solo favoritas)
-- `dateFrom` - Fecha desde (ISO format)
-- `dateTo` - Fecha hasta (ISO format)
-- `minPrecio` - Precio mínimo
-- `maxPrecio` - Precio máximo
-
-#### 3. **GET /predictions/recent?limit=5** - Predicciones Recientes
-```
-GET {{base_url}}/predictions/recent?limit=5
-Authorization: Bearer {{access_token}}
-```
-- Obtiene las predicciones más recientes
-- Por defecto: 10, máximo: 50
-- Útil para dashboards y vistas resumidas
-
-#### 4. **GET /predictions/favorites** - Solo Favoritas
-```
-GET {{base_url}}/predictions/favorites
-Authorization: Bearer {{access_token}}
-```
-- Obtiene solo las predicciones marcadas como favoritas
-- Útil para vista de "guardadas"
-
-#### 5. **GET /predictions/statistics** - Estadísticas
-```
-GET {{base_url}}/predictions/statistics
-Authorization: Bearer {{access_token}}
-```
-**Retorna:**
-```json
-{
-  "success": true,
-  "statistics": {
-    "total": 45,
-    "successful": 42,
-    "failed": 3,
-    "favorites": 8,
-    "averagePrice": 110500
-  }
-}
-```
-
-#### 6. **GET /predictions/:id** - Detalle de Predicción
-```
-GET {{base_url}}/predictions/{{prediction_id}}
-Authorization: Bearer {{access_token}}
-```
-- Obtiene una predicción específica por ID
-- El usuario solo puede ver sus propias predicciones
-- Admins pueden ver todas
-
-#### 7. **PUT /predictions/:id/favorite** - Marcar/Desmarcar Favorita
-```
-PUT {{base_url}}/predictions/{{prediction_id}}/favorite
-Authorization: Bearer {{access_token}}
-Content-Type: application/json
-
-{
-  "isFavorite": true
-}
-```
-- Marca o desmarca una predicción como favorita
-- Retorna la predicción actualizada
-
-#### 8. **PUT /predictions/:id/notes** - Actualizar Notas
-```
-PUT {{base_url}}/predictions/{{prediction_id}}/notes
-Authorization: Bearer {{access_token}}
-Content-Type: application/json
-
-{
-  "userNotes": "Esta consulta es para el departamento de Av. Santa Fe 2500. Precio acorde con la zona."
-}
-```
-- Permite al usuario agregar/editar notas personales
-- Útil para recordar contexto de cada consulta
-
-#### 9. **DELETE /predictions/:id** - Eliminar Predicción
-```
-DELETE {{base_url}}/predictions/{{prediction_id}}
-Authorization: Bearer {{access_token}}
-```
-- Elimina permanentemente una predicción
-- Solo el propietario (o admin) puede eliminar
-- No hay recuperación después de eliminar
+Se ha actualizado la colección de Postman para reflejar correctamente que **toda la gestión de usuarios se realiza mediante AWS Cognito**, sin base de datos local de usuarios.
 
 ---
 
-## 🔄 Endpoint Actualizado: "Predict Rent"
+## Cambios Principales
 
-### Cambios en POST /rent/predict
+### ✅ Endpoint "Get All Users (Admin)" Actualizado
 
-#### Header de Autorización Opcional
-```
-Authorization: Bearer {{access_token}}  (OPCIONAL)
-```
-- **Sin token:** Predicción funciona normalmente, sin guardar historial
-- **Con token:** Predicción + guardado automático en historial
+**ANTES:**
+- URL simple: `GET /users`
+- Sin query params
+- Descripción: "Lista desde base de datos local" ❌
 
-#### Nuevos Campos en Request Body
-```json
-{
-  "barrio": "Palermo",
-  "ambientes": 3,
-  "metrosCuadradosMin": 50,
-  "metrosCuadradosMax": 80,
-  "dormitorios": 2,
-  "banos": 1,
-  "garajes": 1,
-  "antiguedad": 5,
-  "calle": "Av. Santa Fe"
-}
-```
+**DESPUÉS:**
+- URL con query params: `GET /users?limit=60&paginationToken=...`
+- Soporta paginación
+- Descripción actualizada: "Lista desde AWS Cognito User Pool" ✅
 
-**Campos en español (preferidos):**
-- `barrio` - Barrio
-- `ambientes` - Cantidad de ambientes
-- `metrosCuadradosMin` - Metros cuadrados cota inferior
-- `metrosCuadradosMax` - Metros cuadrados cota superior
-- `dormitorios` - Cantidad de dormitorios
-- `banos` - Cantidad de baños
-- `garajes` - Cantidad de garajes
-- `antiguedad` - Antigüedad en años
-- `calle` - Nombre de la calle
+---
 
-**También acepta campos en inglés** (compatibilidad):
-- `neighborhood`, `rooms`, `surface_min`, `surface_max`, `bedrooms`, `bathrooms`, `garages`, `age`, `street`
+## Nuevos Endpoints
 
-#### Nueva Respuesta con predictionId
-```json
-{
-  "result": {
-    "inmuebles_disponibles": 45,
-    "publicaciones_removidas": 3,
-    "publicaciones_nuevas": 8,
-    "precio_cota_inferior": 95000,
-    "precio_cota_superior": 125000,
-    "moneda": "ARS"
-  },
-  "predictionId": "abc-123-def-456"  // ← NUEVO
-}
+### 🆕 "Get All Users - Next Page (Admin)"
+
+**Propósito:** Ejemplo de cómo usar paginación en Cognito
+
+**Request:**
+```http
+GET /users?limit=60&paginationToken={{pagination_token}}
+Authorization: Bearer {{access_token}}
 ```
 
-#### Test Automático
+**Uso:**
+1. Ejecutar "Get All Users (Admin)" primero
+2. Si `hasMore: true`, el `paginationToken` se guarda automáticamente
+3. Ejecutar "Get All Users - Next Page" para obtener la siguiente página
+
+---
+
+## Tests Actualizados
+
+### Endpoint: "Get All Users (Admin)"
+
+**Nuevos tests agregados:**
+
 ```javascript
-// Guarda predictionId en variable de entorno automáticamente
+// 1. Guardar paginationToken automáticamente
 if (pm.response.code === 200) {
     const responseJson = pm.response.json();
-    if (responseJson.predictionId) {
-        pm.environment.set('prediction_id', responseJson.predictionId);
+    if (responseJson.paginationToken) {
+        pm.environment.set('pagination_token', responseJson.paginationToken);
+    } else {
+        pm.environment.unset('pagination_token');
     }
 }
-```
 
----
-
-## 🔧 Nueva Variable de Colección
-
-### `prediction_id`
-```
-Tipo: string
-Descripción: ID de la predicción (obtenido después de hacer una predicción)
-```
-
-Se guarda automáticamente cuando haces una predicción autenticada y se usa en:
-- GET /predictions/{{prediction_id}}
-- PUT /predictions/{{prediction_id}}/favorite
-- PUT /predictions/{{prediction_id}}/notes
-- DELETE /predictions/{{prediction_id}}
-
----
-
-## 📊 Estructura de la Colección
-
-```
-Observatorio Inmobiliario API - AWS Cognito
-├── Authentication (6 endpoints)
-│   ├── Register User
-│   ├── Confirm Registration
-│   ├── Login User
-│   ├── Forgot Password
-│   ├── Confirm Forgot Password
-│   └── Validate Token
-│   └── Logout
-├── User Profile Management (3 endpoints)
-│   ├── Get Profile
-│   ├── Update Profile
-│   └── Change Password
-├── User Administration (4 endpoints - Admin only)
-│   ├── Get All Users
-│   ├── Get User By Username
-│   ├── Update User By Username
-│   └── Disable User
-├── Prediction History (9 endpoints) ✨ NUEVO
-│   ├── Get User Predictions
-│   ├── Get User Predictions (Filtered)
-│   ├── Get Recent Predictions
-│   ├── Get Favorite Predictions
-│   ├── Get Prediction Statistics
-│   ├── Get Prediction By ID
-│   ├── Toggle Favorite
-│   ├── Update Notes
-│   └── Delete Prediction
-└── Rent Management (2 endpoints)
-    ├── Rent Index
-    └── Predict Rent ⚡ ACTUALIZADO
-```
-
----
-
-## 🚀 Flujo de Uso Recomendado
-
-### 1️⃣ Primera Vez
-```
-1. Register User → Confirm Registration
-2. Login User (guarda access_token)
-3. Predict Rent (con token, guarda prediction_id)
-4. Get User Predictions (ver historial)
-```
-
-### 2️⃣ Consulta Nueva
-```
-1. (Ya autenticado con access_token)
-2. Predict Rent → Guarda automáticamente
-3. Get Recent Predictions → Ver últimas 5
-```
-
-### 3️⃣ Gestión de Favoritas
-```
-1. Get User Predictions (buscar consulta interesante)
-2. Toggle Favorite (marcar como favorita)
-3. Update Notes (agregar comentarios)
-4. Get Favorite Predictions (ver todas las favoritas)
-```
-
-### 4️⃣ Análisis y Estadísticas
-```
-1. Get Prediction Statistics → Ver resumen general
-2. Get User Predictions (Filtered) → Filtrar por barrio/dormitorios
-3. Comparar precios entre diferentes zonas
-```
-
-### 5️⃣ Limpieza
-```
-1. Get User Predictions → Ver todas
-2. Delete Prediction → Eliminar las que no necesito
-```
-
----
-
-## 🧪 Tests Automáticos
-
-Todos los endpoints incluyen tests automáticos que verifican:
-
-✅ Status code correcto (200, 201, etc.)  
-✅ Response tiene estructura esperada  
-✅ Campos requeridos están presentes  
-✅ Tipos de datos son correctos  
-✅ Variables de entorno se guardan automáticamente
-
-### Ejemplo de Test
-```javascript
-pm.test('Response contains predictions array', function () {
+// 2. Verificar atributos de Cognito en usuarios
+pm.test('Users have Cognito attributes', function () {
     const responseJson = pm.response.json();
-    pm.expect(responseJson.success).to.be.true;
-    pm.expect(responseJson.predictions).to.be.an('array');
-    pm.expect(responseJson.total).to.be.a('number');
+    if (responseJson.users.length > 0) {
+        const user = responseJson.users[0];
+        pm.expect(user.username).to.not.be.undefined;
+        pm.expect(user.sub).to.not.be.undefined;
+        pm.expect(user.email).to.not.be.undefined;
+        pm.expect(user.enabled).to.be.a('boolean');
+        pm.expect(user.userStatus).to.not.be.undefined;
+    }
+});
+
+// 3. Verificar información de paginación
+pm.test('Response includes pagination info', function () {
+    const responseJson = pm.response.json();
+    pm.expect(responseJson.hasMore).to.be.a('boolean');
 });
 ```
 
 ---
 
-## 📝 Notas Importantes
+## Query Parameters
 
-### Autenticación
-- Todos los endpoints de `/predictions` requieren token de Cognito
-- El endpoint `/rent/predict` funciona con o sin token:
-  - **Sin token:** Solo predicción, no guarda historial
-  - **Con token:** Predicción + historial automático
+### GET /users
 
-### Ownership
-- Los usuarios solo pueden ver/editar/eliminar sus propias predicciones
-- Los admins pueden ver todas las predicciones
+| Parámetro | Tipo | Requerido | Default | Descripción |
+|-----------|------|-----------|---------|-------------|
+| `limit` | number | No | 60 | Número de usuarios por página (máximo: 60) |
+| `paginationToken` | string | No | - | Token para obtener la siguiente página |
 
-### Límites
-- Recent Predictions: máximo 50 resultados
-- Filtros múltiples se pueden combinar
-
-### Mapeo de Campos
-El sistema acepta campos en español o inglés para compatibilidad:
+**Ejemplo sin paginación:**
 ```
-barrio ← barrio || neighborhood
-dormitorios ← dormitorios || bedrooms
-banos ← banos || bathrooms
-// etc.
+GET /users?limit=60
+```
+
+**Ejemplo con paginación:**
+```
+GET /users?limit=60&paginationToken=AQIC5...XYZ
 ```
 
 ---
 
-## 🔗 Importar Colección
+## Respuesta Actualizada
 
-1. Abre Postman
-2. Click en "Import"
-3. Selecciona `Observatorio_Inmobiliario_API.postman_collection.json`
-4. Click "Import"
+### Estructura de Respuesta
 
-**Configurar Environment:**
 ```json
 {
-  "base_url": "http://localhost:9000",
-  "access_token": "",
-  "prediction_id": ""
+  "success": true,
+  "message": "Usuarios obtenidos exitosamente",
+  "users": [
+    {
+      "username": "user@example.com",
+      "sub": "12345678-1234-1234-1234-123456789abc",
+      "email": "user@example.com",
+      "emailVerified": true,
+      "firstName": "John",
+      "lastName": "Doe",
+      "userType": "Propietario",
+      "enabled": true,
+      "userStatus": "CONFIRMED",
+      "createdAt": "2025-10-25T14:30:00.000Z",
+      "lastModified": "2025-10-25T14:30:00.000Z"
+    }
+    // ... más usuarios (hasta 60)
+  ],
+  "total": 60,
+  "paginationToken": "AQIC5wM2LY44FmsiQXJpYXNAc2Vuc29yczQuY29tIg",  // null si no hay más páginas
+  "hasMore": true  // false si es la última página
 }
 ```
 
-Las variables `access_token` y `prediction_id` se guardarán automáticamente al hacer Login y Predict.
+### Campos Nuevos de Usuario (desde Cognito)
+
+| Campo | Tipo | Descripción |
+|-------|------|-------------|
+| `username` | string | Username en Cognito (generalmente el email) |
+| `sub` | string | ID único del usuario en Cognito (UUID) |
+| `emailVerified` | boolean | Si el email ha sido verificado |
+| `enabled` | boolean | Si el usuario está habilitado |
+| `userStatus` | string | Estado: CONFIRMED, UNCONFIRMED, FORCE_CHANGE_PASSWORD, etc. |
+| `createdAt` | Date | Fecha de creación en Cognito |
+| `lastModified` | Date | Última modificación en Cognito |
 
 ---
 
-## 📚 Referencias
+## Variables de Entorno Nuevas
 
-- [Estructura de Campos de Predicción](./RENT_PREDICTION_FIELDS.md)
-- [Documentación de Historial](./RENT_PREDICTIONS_HISTORY.md)
-- [Entidad RentPrediction](../src/entities/RentPrediction.entity.ts)
-- [Controlador](../src/controllers/RentPredictionController.ts)
+### Variable: `pagination_token`
+
+**Descripción:** Token de paginación para Cognito User Pool
+
+**Uso:**
+- Se guarda automáticamente al ejecutar "Get All Users (Admin)"
+- Se usa en "Get All Users - Next Page (Admin)"
+- Se limpia automáticamente cuando no hay más páginas
+
+**Ubicación en Postman:**
+```
+Variables → pagination_token
+```
 
 ---
 
-✅ **Colección actualizada con 9 nuevos endpoints para historial de predicciones!**
+## Descripción General Actualizada
 
+### Info de la Colección
+
+**Nueva descripción incluye:**
+
+```
+Colección completa para la API del Observatorio Inmobiliario.
+
+**Autenticación:** AWS Cognito User Pool (todos los usuarios se gestionan en Cognito)
+**Predicciones:** AWS Lambda para ML + S3 para imágenes/métricas + Overpass API para lugares cercanos
+**Base de datos:** PostgreSQL para historial de predicciones (usa cognitoSub como referencia)
+
+**Notas importantes:**
+- No hay entidad User local - toda la gestión de usuarios se hace en Cognito
+- Los endpoints de admin requieren pertenecer al grupo 'admin' en Cognito
+- El listado de usuarios soporta paginación (limit y paginationToken)
+- Las predicciones se guardan automáticamente si el usuario está autenticado
+```
+
+### Carpeta "User Administration"
+
+**Nueva descripción:**
+```
+Endpoints de administración de usuarios (requieren grupo 'admin' de Cognito).
+
+**Importante:** Todos los endpoints listan, obtienen y modifican usuarios directamente 
+en AWS Cognito User Pool. No hay base de datos local de usuarios.
+
+**Paginación:** El endpoint GET /users soporta paginación con query params 'limit' 
+(max 60) y 'paginationToken' (obtenido de respuesta anterior).
+```
+
+---
+
+## Flujo de Uso: Paginación
+
+### Paso 1: Obtener primera página
+
+```http
+GET /users?limit=60
+Authorization: Bearer {{access_token}}
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "users": [ /* 60 usuarios */ ],
+  "total": 60,
+  "paginationToken": "AQIC5wM2LY44FmsiQXJpYXN...",
+  "hasMore": true
+}
+```
+
+✅ El test automáticamente guarda `paginationToken` en variable de entorno
+
+---
+
+### Paso 2: Obtener siguiente página
+
+```http
+GET /users?limit=60&paginationToken={{pagination_token}}
+Authorization: Bearer {{access_token}}
+```
+
+**Respuesta:**
+```json
+{
+  "success": true,
+  "users": [ /* siguiente conjunto de hasta 60 usuarios */ ],
+  "total": 45,
+  "paginationToken": "BQJD6xN3MZ55GntjRks...",  // o null si es la última página
+  "hasMore": true  // o false si es la última página
+}
+```
+
+---
+
+### Paso 3: Continuar hasta llegar al final
+
+Cuando `hasMore: false` y `paginationToken: null`, ya no hay más páginas.
+
+---
+
+## Endpoints sin Cambios
+
+Los siguientes endpoints **NO** requieren actualización ya que siempre usaron Cognito:
+
+✅ **Authentication:**
+- Register User
+- Confirm Registration
+- Login User
+- Forgot Password
+- Confirm Forgot Password
+- Validate Token
+- Logout
+
+✅ **User Profile Management:**
+- Get Profile
+- Update Profile
+- Change Password
+
+✅ **User Administration (otros endpoints):**
+- Get User By Username (Admin)
+- Update User By Username (Admin)
+- Disable User (Admin)
+
+✅ **Prediction History:**
+- Todos los endpoints (sin cambios)
+
+✅ **Rent Management:**
+- Todos los endpoints (sin cambios)
+
+---
+
+## Verificación
+
+### Checklist de Actualización
+
+- [x] ✅ Endpoint "Get All Users" actualizado con query params
+- [x] ✅ Nuevo endpoint "Get All Users - Next Page" agregado
+- [x] ✅ Tests actualizados para verificar atributos de Cognito
+- [x] ✅ Script de test para guardar `paginationToken` automáticamente
+- [x] ✅ Variable `pagination_token` agregada
+- [x] ✅ Descripción general de la colección actualizada
+- [x] ✅ Descripción de carpeta "User Administration" actualizada
+- [x] ✅ Documentación de campos de respuesta actualizada
+
+---
+
+## Testing Recomendado
+
+### Escenario 1: Usuario Admin Lista Usuarios
+
+1. **Login** como admin
+   - Ejecutar: "Login User"
+   - Verificar: `access_token` guardado
+
+2. **Obtener primera página**
+   - Ejecutar: "Get All Users (Admin)"
+   - Verificar: Respuesta con 60 usuarios (si hay suficientes)
+   - Verificar: `pagination_token` guardado automáticamente si `hasMore: true`
+
+3. **Obtener siguiente página** (si `hasMore: true`)
+   - Ejecutar: "Get All Users - Next Page (Admin)"
+   - Verificar: Respuesta con siguiente conjunto de usuarios
+   - Verificar: Usuarios diferentes a los de la primera página
+
+### Escenario 2: Usuario No Admin Intenta Listar
+
+1. **Login** como usuario regular
+2. **Intentar listar**
+   - Ejecutar: "Get All Users (Admin)"
+   - Verificar: Error 403 Forbidden (no pertenece al grupo admin)
+
+---
+
+## Beneficios de la Actualización
+
+| Aspecto | ANTES | DESPUÉS |
+|---------|-------|---------|
+| **Fuente de datos** | "Base de datos local" ❌ | AWS Cognito ✅ |
+| **Paginación** | No documentada | Completamente documentada ✅ |
+| **Tests** | Básicos | Verifican atributos de Cognito ✅ |
+| **Automatización** | Manual | Auto-guarda paginationToken ✅ |
+| **Ejemplos** | 1 endpoint | 2 endpoints (con/sin paginación) ✅ |
+| **Documentación** | Desactualizada | Actualizada y precisa ✅ |
+
+---
+
+## Próximos Pasos (Opcional)
+
+### Mejoras Futuras para Postman
+
+1. **Environment Examples:**
+   - Crear environment de ejemplo con valores de prueba
+   - Incluir tokens de ejemplo (expirados) para referencia
+
+2. **Response Examples:**
+   - Agregar ejemplos de respuestas exitosas y de error
+   - Documentar todos los códigos de estado posibles
+
+3. **Pre-request Scripts:**
+   - Validar que access_token existe antes de requests autenticados
+   - Mostrar mensaje amigable si falta el token
+
+4. **Collection Runner:**
+   - Crear test suite para ejecutar todos los endpoints en orden
+   - Validar flujo completo: Register → Confirm → Login → List Users
+
+---
+
+## Conclusión
+
+✅ **La colección de Postman está actualizada y refleja correctamente:**
+- Eliminación de entidad User local
+- Gestión 100% con AWS Cognito
+- Soporte completo de paginación
+- Tests mejorados y automatización
+
+✅ **Documentación clara sobre:**
+- Cómo usar paginación
+- Estructura de respuestas de Cognito
+- Campos nuevos y sus tipos
+- Flujo de uso recomendado
+
+🎉 **¡Colección lista para usar con la nueva arquitectura!**

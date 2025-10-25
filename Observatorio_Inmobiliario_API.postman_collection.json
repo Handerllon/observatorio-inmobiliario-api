@@ -2,7 +2,7 @@
 	"info": {
 		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
 		"name": "Observatorio Inmobiliario API - AWS Cognito",
-		"description": "Colección completa para la API del Observatorio Inmobiliario con autenticación mediante AWS Cognito, gestión de usuarios y predicción de rentas.",
+		"description": "Colección completa para la API del Observatorio Inmobiliario.\n\n**Autenticación:** AWS Cognito User Pool (todos los usuarios se gestionan en Cognito)\n**Predicciones:** AWS Lambda para ML + S3 para imágenes/métricas + Overpass API para lugares cercanos\n**Base de datos:** PostgreSQL para historial de predicciones (usa cognitoSub como referencia)\n\n**Notas importantes:**\n- No hay entidad User local - toda la gestión de usuarios se hace en Cognito\n- Los endpoints de admin requieren pertenecer al grupo 'admin' en Cognito\n- El listado de usuarios soporta paginación (limit y paginationToken)\n- Las predicciones se guardan automáticamente si el usuario está autenticado",
 		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
 		"_exporter_id": "12345678"
 	},
@@ -569,6 +569,16 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    // Guardar paginationToken si existe para usar en siguiente página",
+									"    if (responseJson.paginationToken) {",
+									"        pm.environment.set('pagination_token', responseJson.paginationToken);",
+									"    } else {",
+									"        pm.environment.unset('pagination_token');",
+									"    }",
+									"}",
+									"",
 									"pm.test('Status code is 200', function () {",
 									"    pm.response.to.have.status(200);",
 									"});",
@@ -578,6 +588,23 @@
 									"    pm.expect(responseJson.success).to.be.true;",
 									"    pm.expect(responseJson.users).to.be.an('array');",
 									"    pm.expect(responseJson.total).to.be.a('number');",
+									"});",
+									"",
+									"pm.test('Users have Cognito attributes', function () {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.users.length > 0) {",
+									"        const user = responseJson.users[0];",
+									"        pm.expect(user.username).to.not.be.undefined;",
+									"        pm.expect(user.sub).to.not.be.undefined;",
+									"        pm.expect(user.email).to.not.be.undefined;",
+									"        pm.expect(user.enabled).to.be.a('boolean');",
+									"        pm.expect(user.userStatus).to.not.be.undefined;",
+									"    }",
+									"});",
+									"",
+									"pm.test('Response includes pagination info', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.hasMore).to.be.a('boolean');",
 									"});"
 								],
 								"type": "text/javascript"
@@ -594,15 +621,83 @@
 							}
 						],
 						"url": {
-							"raw": "{{base_url}}/users",
+							"raw": "{{base_url}}/users?limit=60",
 							"host": [
 								"{{base_url}}"
 							],
 							"path": [
 								"users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "60",
+									"description": "Número de usuarios por página (default: 60, max: 60)"
+								},
+								{
+									"key": "paginationToken",
+									"value": "",
+									"description": "Token para la siguiente página (obtenido de respuesta anterior)",
+									"disabled": true
+								}
 							]
 						},
-						"description": "Lista todos los usuarios (requiere grupo admin en Cognito). Lista desde base de datos local."
+						"description": "Lista todos los usuarios desde AWS Cognito User Pool (requiere grupo admin). Soporta paginación con limit y paginationToken. Retorna información completa de cada usuario incluyendo sub, email, firstName, lastName, userType, enabled, userStatus y timestamps."
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users - Next Page (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains next page of users', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.users).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users?limit=60&paginationToken={{pagination_token}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "60",
+									"description": "Número de usuarios por página"
+								},
+								{
+									"key": "paginationToken",
+									"value": "{{pagination_token}}",
+									"description": "Token obtenido de la respuesta anterior"
+								}
+							]
+						},
+						"description": "Obtiene la siguiente página de usuarios usando el paginationToken de la respuesta anterior. Ejemplo de paginación en Cognito."
 					},
 					"response": []
 				},
@@ -747,7 +842,7 @@
 					"response": []
 				}
 			],
-			"description": "Endpoints de administración de usuarios (requieren grupo admin de Cognito)"
+			"description": "Endpoints de administración de usuarios (requieren grupo 'admin' de Cognito).\n\n**Importante:** Todos los endpoints listan, obtienen y modifican usuarios directamente en AWS Cognito User Pool. No hay base de datos local de usuarios.\n\n**Paginación:** El endpoint GET /users soporta paginación con query params 'limit' (max 60) y 'paginationToken' (obtenido de respuesta anterior)."
 		},
 		{
 			"name": "Prediction History",
@@ -1405,6 +1500,12 @@
 			"value": "",
 			"type": "string",
 			"description": "ID de la predicción (obtenido después de hacer una predicción)"
+		},
+		{
+			"key": "pagination_token",
+			"value": "",
+			"type": "string",
+			"description": "Token de paginación para Cognito User Pool (obtenido de respuesta de GET /users)"
 		}
 	]
 }
