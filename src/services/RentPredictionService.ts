@@ -19,12 +19,13 @@ export interface CreatePredictionDto {
 
 export interface UpdatePredictionDto {
   // Campos post-generación (resultados)
-  inmueblesDisponibles?: number;
-  publicacionesRemovidas?: number;
-  publicacionesNuevas?: number;
   precioCotaInferior?: number;
   precioCotaSuperior?: number;
   moneda?: string;
+  // Datos adicionales (JSON)
+  images?: Record<string, string>;
+  metrics?: Record<string, any>;
+  nearbyPlaces?: Record<string, any>;
   // Metadatos
   status?: PredictionStatus;
   errorMessage?: string;

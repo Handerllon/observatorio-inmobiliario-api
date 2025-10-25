@@ -750,6 +750,475 @@
 			"description": "Endpoints de administración de usuarios (requieren grupo admin de Cognito)"
 		},
 		{
+			"name": "Prediction History",
+			"item": [
+				{
+					"name": "Get User Predictions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains predictions array', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.predictions).to.be.an('array');",
+									"    pm.expect(responseJson.total).to.be.a('number');",
+									"});",
+									"",
+									"pm.test('Predictions have required fields', function () {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.predictions.length > 0) {",
+									"        const prediction = responseJson.predictions[0];",
+									"        pm.expect(prediction.id).to.not.be.undefined;",
+									"        pm.expect(prediction.status).to.not.be.undefined;",
+									"        pm.expect(prediction.createdAt).to.not.be.undefined;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions"
+							]
+						},
+						"description": "Obtiene todas las predicciones del usuario autenticado, ordenadas por fecha (más recientes primero)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Predictions (Filtered)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains filtered predictions', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.predictions).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions?barrio=Palermo&dormitorios=2&status=success&isFavorite=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions"
+							],
+							"query": [
+								{
+									"key": "barrio",
+									"value": "Palermo",
+									"description": "Filtrar por barrio"
+								},
+								{
+									"key": "dormitorios",
+									"value": "2",
+									"description": "Filtrar por cantidad de dormitorios"
+								},
+								{
+									"key": "status",
+									"value": "success",
+									"description": "success, error, pending"
+								},
+								{
+									"key": "isFavorite",
+									"value": "true",
+									"description": "Solo favoritas"
+								}
+							]
+						},
+						"description": "Obtiene predicciones filtradas por barrio, dormitorios, estado y/o favoritas."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recent Predictions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains recent predictions', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.predictions).to.be.an('array');",
+									"    pm.expect(responseJson.predictions.length).to.be.at.most(5);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/recent?limit=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"recent"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "5",
+									"description": "Cantidad de predicciones recientes"
+								}
+							]
+						},
+						"description": "Obtiene las predicciones más recientes del usuario (por defecto 10, máximo 50)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Favorite Predictions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains only favorites', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.predictions).to.be.an('array');",
+									"    responseJson.predictions.forEach(pred => {",
+									"        pm.expect(pred.isFavorite).to.be.true;",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/favorites",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"favorites"
+							]
+						},
+						"description": "Obtiene todas las predicciones marcadas como favoritas por el usuario."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Prediction Statistics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains statistics', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.statistics).to.not.be.undefined;",
+									"    pm.expect(responseJson.statistics.total).to.be.a('number');",
+									"    pm.expect(responseJson.statistics.successful).to.be.a('number');",
+									"    pm.expect(responseJson.statistics.failed).to.be.a('number');",
+									"    pm.expect(responseJson.statistics.averagePrice).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/statistics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"statistics"
+							]
+						},
+						"description": "Obtiene estadísticas generales de las predicciones del usuario (total, exitosas, fallidas, precio promedio)."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Prediction By ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains prediction data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.prediction).to.not.be.undefined;",
+									"    pm.expect(responseJson.prediction.id).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/{{prediction_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"{{prediction_id}}"
+							]
+						},
+						"description": "Obtiene una predicción específica por su ID. El usuario solo puede ver sus propias predicciones."
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Favorite",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Favorite toggled successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.prediction.isFavorite).to.be.a('boolean');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isFavorite\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/predictions/{{prediction_id}}/favorite",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"{{prediction_id}}",
+								"favorite"
+							]
+						},
+						"description": "Marca o desmarca una predicción como favorita."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Notes",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Notes updated successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.prediction.userNotes).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"userNotes\": \"Esta consulta es para el departamento de Av. Santa Fe 2500. Precio acorde con la zona.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/predictions/{{prediction_id}}/notes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"{{prediction_id}}",
+								"notes"
+							]
+						},
+						"description": "Actualiza las notas personales de una predicción."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Prediction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Prediction deleted successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.message).to.include('eliminada');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/{{prediction_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"{{prediction_id}}"
+							]
+						},
+						"description": "Elimina permanentemente una predicción. El usuario solo puede eliminar sus propias predicciones."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión del historial de predicciones de renta"
+		},
+		{
 			"name": "Rent Management",
 			"item": [
 				{
@@ -805,6 +1274,13 @@
 							"listen": "test",
 							"script": {
 								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.predictionId) {",
+									"        pm.environment.set('prediction_id', responseJson.predictionId);",
+									"    }",
+									"}",
+									"",
 									"pm.test('Status code is 200', function () {",
 									"    pm.response.to.have.status(200);",
 									"});",
@@ -812,6 +1288,13 @@
 									"pm.test('Response contains result', function () {",
 									"    const responseJson = pm.response.json();",
 									"    pm.expect(responseJson.result).to.not.be.undefined;",
+									"});",
+									"",
+									"pm.test('Response contains predictionId if authenticated', function () {",
+									"    if (pm.request.headers.get('Authorization')) {",
+									"        const responseJson = pm.response.json();",
+									"        pm.expect(responseJson.predictionId).to.not.be.undefined;",
+									"    }",
 									"});"
 								],
 								"type": "text/javascript"
@@ -825,11 +1308,17 @@
 								"key": "Content-Type",
 								"value": "application/json",
 								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text",
+								"description": "Opcional - Si se incluye, guarda el historial"
 							}
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"property_type\": \"departamento\",\n    \"bedrooms\": 2,\n    \"bathrooms\": 1,\n    \"surface_total\": 65,\n    \"surface_covered\": 60,\n    \"neighborhood\": \"Palermo\",\n    \"city\": \"Buenos Aires\",\n    \"province\": \"Buenos Aires\",\n    \"amenities\": [\n        \"gym\",\n        \"pool\",\n        \"security\"\n    ]\n}"
+							"raw": "{\n    \"barrio\": \"Palermo\",\n    \"ambientes\": 3,\n    \"metrosCuadradosMin\": 50,\n    \"metrosCuadradosMax\": 80,\n    \"dormitorios\": 2,\n    \"banos\": 1,\n    \"garajes\": 1,\n    \"antiguedad\": 5,\n    \"calle\": \"Av. Santa Fe\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/rent/predict",
@@ -841,7 +1330,7 @@
 								"predict"
 							]
 						},
-						"description": "Predice el precio de renta de una propiedad basándose en sus características."
+						"description": "Predice el precio de renta basándose en características. Si se autentica, guarda el historial automáticamente."
 					},
 					"response": []
 				}
@@ -910,6 +1399,12 @@
 			"value": "",
 			"type": "string",
 			"description": "Username del usuario en Cognito (para endpoints de admin)"
+		},
+		{
+			"key": "prediction_id",
+			"value": "",
+			"type": "string",
+			"description": "ID de la predicción (obtenido después de hacer una predicción)"
 		}
 	]
 }

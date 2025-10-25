@@ -56,15 +56,6 @@ export class RentPrediction {
   calle: string;
 
   // ==================== CAMPOS POST-GENERACIÓN (Resultados) ====================
-  @Column({ type: "integer", nullable: true })
-  inmueblesDisponibles: number;
-
-  @Column({ type: "integer", nullable: true })
-  publicacionesRemovidas: number;
-
-  @Column({ type: "integer", nullable: true })
-  publicacionesNuevas: number;
-
   @Column({ type: "decimal", precision: 12, scale: 2, nullable: true })
   precioCotaInferior: number;
 
@@ -73,6 +64,58 @@ export class RentPrediction {
 
   @Column({ type: "varchar", length: 10, default: "ARS" })
   moneda: string;
+
+  // ==================== DATOS ADICIONALES (JSON) ====================
+  
+  /**
+   * URLs de imágenes del reporte
+   * Estructura: {
+   *   price_by_m2_evolution: string,
+   *   price_evolution: string,
+   *   bar_price_by_amb: string,
+   *   bar_m2_price_by_amb: string,
+   *   bar_price_by_amb_neighborhood: string,
+   *   bar_m2_price_by_amb_neighborhood: string,
+   *   pie_property_amb_distribution: string,
+   *   pie_property_m2_distribution_neighborhood: string,
+   *   pie_property_amb_distribution_neighborhood: string
+   * }
+   */
+  @Column({ type: "jsonb", nullable: true })
+  images: Record<string, string>;
+
+  /**
+   * Métricas del barrio
+   * Estructura: {
+   *   total_properties: number,
+   *   new_properties_since_last_report: number,
+   *   removed_properties_since_last_report: number,
+   *   total_properties_neighborhood: number,
+   *   average_price_neighborhood: string,
+   *   min_price_neighborhood: string,
+   *   max_price_neighborhood: string,
+   *   new_properties_since_last_report_neighborhood: number,
+   *   removed_properties_since_last_report_neighborhood: number
+   * }
+   */
+  @Column({ type: "jsonb", nullable: true })
+  metrics: Record<string, any>;
+
+  /**
+   * Lugares cercanos encontrados via Overpass API
+   * Estructura: {
+   *   coordinates: { lat: number, lng: number },
+   *   transporte: Array,
+   *   sitios_interes: Array,
+   *   edificios_administrativos: Array,
+   *   instituciones_educativas: Array,
+   *   centros_salud: Array,
+   *   restaurantes: Array,
+   *   summary: { total: number, ... }
+   * }
+   */
+  @Column({ type: "jsonb", nullable: true })
+  nearbyPlaces: Record<string, any>;
 
   // ==================== METADATOS DE LA PREDICCIÓN ====================
   @Column({
@@ -110,26 +153,30 @@ export class RentPrediction {
       id: this.id,
       cognitoSub: this.cognitoSub,
       userEmail: this.userEmail,
-      // Input
-      barrio: this.barrio,
-      ambientes: this.ambientes,
-      metrosCuadradosMin: this.metrosCuadradosMin,
-      metrosCuadradosMax: this.metrosCuadradosMax,
-      dormitorios: this.dormitorios,
-      banos: this.banos,
-      garajes: this.garajes,
-      antiguedad: this.antiguedad,
-      calle: this.calle,
-      // Output
-      inmueblesDisponibles: this.inmueblesDisponibles,
-      publicacionesRemovidas: this.publicacionesRemovidas,
-      publicacionesNuevas: this.publicacionesNuevas,
-      precioCotaInferior: this.precioCotaInferior,
-      precioCotaSuperior: this.precioCotaSuperior,
+      // Input data
+      input_data: {
+        barrio: this.barrio,
+        ambientes: this.ambientes,
+        metrosCuadradosMin: this.metrosCuadradosMin,
+        metrosCuadradosMax: this.metrosCuadradosMax,
+        dormitorios: this.dormitorios,
+        banos: this.banos,
+        garajes: this.garajes,
+        antiguedad: this.antiguedad,
+        calle: this.calle,
+      },
+      // Predictions
+      predictionMin: this.precioCotaInferior,
+      predictionMax: this.precioCotaSuperior,
       moneda: this.moneda,
+      // Additional data
+      images: this.images,
+      metrics: this.metrics,
+      nearby_places: this.nearbyPlaces,
       // Metadata
       status: this.status,
       executionTimeMs: this.executionTimeMs,
+      errorMessage: this.errorMessage,
       // User data
       userNotes: this.userNotes,
       isFavorite: this.isFavorite,

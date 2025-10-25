@@ -1,40 +1,215 @@
-import * as exec from "child_process";
-import { timeStamp } from "console";
-import { writeFile, mkdir } from "fs/promises";
-import * as path from "path";
-
+/**
+ * RentService
+ * 
+ * Servicio enfocado únicamente en la persistencia de datos relacionados a rentas.
+ * No maneja integraciones externas (AWS, APIs, etc.)
+ * 
+ * Responsabilidades:
+ * - Guardar predicciones en base de datos
+ * - Consultar historial de predicciones
+ * - Validar datos antes de persistir
+ * - Operaciones CRUD relacionadas a rentas
+ */
 export class RentService {
 
-	private output_path = process.cwd()+"/api_logs";
-	private script_folder = process.cwd()+"/src/scripts";
+  /**
+   * Valida los datos de predicción antes de guardar
+   * 
+   * @param predictionData - Datos de la predicción
+   * @returns true si los datos son válidos
+   */
+  validatePredictionData(predictionData: any): boolean {
+    // Validar campos requeridos
+    if (!predictionData.barrio) {
+      throw new Error("El campo 'barrio' es requerido");
+    }
 
-  async executePrediction(body): Promise<any> {
+    // Validar que al menos uno de los valores de predicción exista
+    const hasValidPrediction = 
+      predictionData.prediction || 
+      (predictionData.predictionMin && predictionData.predictionMax);
+
+    if (!hasValidPrediction) {
+      throw new Error("Debe haber al menos un valor de predicción");
+    }
+
+    return true;
+  }
+
+  /**
+   * Prepara los datos para ser guardados en la base de datos
+   * Normaliza el formato y agrega metadata
+   * 
+   * @param predictionData - Datos crudos de la predicción
+   * @param userId - ID del usuario (opcional)
+   * @returns Objeto preparado para persistir
+   */
+  preparePredictionForDB(predictionData: any, userId?: string): any {
+    const timestamp = new Date();
+
+    return {
+      // Metadatos
+      userId: userId || null,
+      createdAt: timestamp,
+      updatedAt: timestamp,
+
+      // Datos de entrada
+      barrio: predictionData.input_data?.barrio || null,
+      ambientes: predictionData.input_data?.ambientes || null,
+      metrosCuadradosMin: predictionData.input_data?.metrosCuadradosMin || null,
+      metrosCuadradosMax: predictionData.input_data?.metrosCuadradosMax || null,
+      dormitorios: predictionData.input_data?.dormitorios || null,
+      banos: predictionData.input_data?.banos || null,
+      garajes: predictionData.input_data?.garajes || null,
+      antiguedad: predictionData.input_data?.antiguedad || null,
+      calle: predictionData.input_data?.calle || null,
+
+      // Resultados de predicción
+      prediction: predictionData.prediction || null,
+      predictionMin: predictionData.predictionMin || null,
+      predictionMax: predictionData.predictionMax || null,
+
+      // Imágenes (guardar como JSON)
+      images: JSON.stringify(predictionData.images || {}),
+
+      // Input completo (para re-ejecución)
+      inputData: JSON.stringify(predictionData.input_data || {}),
+
+      // Estado
+      status: 'completed'
+    };
+  }
+
+  /**
+   * Guarda una predicción en la base de datos
+   * 
+   * @param predictionData - Datos de la predicción
+   * @param userId - ID del usuario
+   * @returns Predicción guardada
+   */
+  async savePrediction(predictionData: any, userId?: string): Promise<any> {
     try {
-			// Generamos timestamp
-			const timestamp = new Date().getTime();
-			// Creamos el path full
-			const folderPath = path.join(this.output_path, timestamp.toString());
-			await mkdir(folderPath, { recursive: true })
+      // Validar datos
+      this.validatePredictionData(predictionData);
 
-			// Creamos const para archivo de input
-      		const input_filename = `input_data.json`;
-			const output_filename = `output_data.json`;
+      // Preparar para DB
+      const dbData = this.preparePredictionForDB(predictionData, userId);
 
-      		await writeFile(`${folderPath}/${input_filename}`, JSON.stringify(body));
+      console.log("💾 Guardando predicción en base de datos...");
+      console.log("📊 Datos:", JSON.stringify(dbData, null, 2));
 
-			const sleep = ms => new Promise(resolve => setTimeout(resolve, ms))
-			await sleep(3000)
+      // TODO: Implementar guardado real en base de datos
+      // const savedPrediction = await predictionRepository.save(dbData);
+      // return savedPrediction;
 
-			const result = await exec.execSync(
-				`python3 ${this.script_folder}/report_generator.py ${folderPath}/${input_filename}`
-			);
+      // Por ahora, retornar los datos preparados
+      return {
+        id: `pred_${Date.now()}`,
+        ...dbData
+      };
+    } catch (error) {
+      console.error("❌ Error guardando predicción:", error);
+      throw error;
+    }
+  }
 
-			await writeFile(`${folderPath}/${output_filename}`, JSON.stringify(result.toString()));
+  /**
+   * Obtiene el historial de predicciones de un usuario
+   * 
+   * @param userId - ID del usuario
+   * @param limit - Número máximo de resultados
+   * @returns Lista de predicciones
+   */
+  async getUserPredictionHistory(userId: string, limit: number = 10): Promise<any[]> {
+    try {
+      console.log(`📖 Obteniendo historial de predicciones para usuario: ${userId}`);
 
-			return result.toString()
+      // TODO: Implementar consulta real a base de datos
+      // const predictions = await predictionRepository.find({
+      //   where: { userId },
+      //   order: { createdAt: 'DESC' },
+      //   take: limit
+      // });
+      // return predictions;
 
-    } catch (err) {
-      console.log(err);
+      // Por ahora, retornar array vacío
+      return [];
+    } catch (error) {
+      console.error("❌ Error obteniendo historial:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Obtiene una predicción específica por ID
+   * 
+   * @param predictionId - ID de la predicción
+   * @returns Predicción encontrada
+   */
+  async getPredictionById(predictionId: string): Promise<any | null> {
+    try {
+      console.log(`🔍 Buscando predicción: ${predictionId}`);
+
+      // TODO: Implementar consulta real a base de datos
+      // const prediction = await predictionRepository.findOne({
+      //   where: { id: predictionId }
+      // });
+      // return prediction;
+
+      // Por ahora, retornar null
+      return null;
+    } catch (error) {
+      console.error("❌ Error obteniendo predicción:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Elimina una predicción
+   * 
+   * @param predictionId - ID de la predicción
+   * @returns true si se eliminó exitosamente
+   */
+  async deletePrediction(predictionId: string): Promise<boolean> {
+    try {
+      console.log(`🗑️  Eliminando predicción: ${predictionId}`);
+
+      // TODO: Implementar eliminación real de base de datos
+      // await predictionRepository.delete(predictionId);
+      
+      return true;
+    } catch (error) {
+      console.error("❌ Error eliminando predicción:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Actualiza una predicción existente
+   * 
+   * @param predictionId - ID de la predicción
+   * @param updateData - Datos a actualizar
+   * @returns Predicción actualizada
+   */
+  async updatePrediction(predictionId: string, updateData: any): Promise<any> {
+    try {
+      console.log(`✏️  Actualizando predicción: ${predictionId}`);
+
+      // TODO: Implementar actualización real en base de datos
+      // const updated = await predictionRepository.update(predictionId, {
+      //   ...updateData,
+      //   updatedAt: new Date()
+      // });
+      // return updated;
+
+      return {
+        id: predictionId,
+        ...updateData,
+        updatedAt: new Date()
+      };
+    } catch (error) {
+      console.error("❌ Error actualizando predicción:", error);
+      throw error;
     }
   }
 }
