@@ -1,10 +1,8 @@
 import { Request, Response } from "express";
-import { UserService, CreateUserDto, LoginDto, UpdateUserDto } from "../services/UserService";
-import { CognitoService, RegisterDto } from "../services/CognitoService";
+import { CognitoService, RegisterDto, LoginDto } from "../services/CognitoService";
 import { logger } from "../utils/Logger";
 
 export class UserController {
-  private static service: UserService = new UserService();
   private static cognitoService: CognitoService = new CognitoService();
 
   // POST /users/register - Registrar nuevo usuario en Cognito
@@ -190,18 +188,28 @@ export class UserController {
     }
   }
 
-  // GET /users - Obtener todos los usuarios desde la base de datos local (solo admin)
-  // Nota: Cognito no tiene un endpoint simple para listar todos los usuarios
-  // Esta funcionalidad mantiene la base de datos local para consultas
+  // GET /users - Obtener todos los usuarios desde Cognito (solo admin)
+  // Soporta paginación con query params: limit y paginationToken
   async getAllUsers(req: Request, res: Response): Promise<any> {
     try {
-      const users = await UserController.service.getAllUsers();
+      const limit = parseInt(req.query.limit as string) || 60;
+      const paginationToken = req.query.paginationToken as string;
+
+      logger.info(`📋 Listando usuarios de Cognito (limit: ${limit})`);
+
+      const result = await UserController.cognitoService.listUsers(limit, paginationToken);
       
+      if (!result.success) {
+        return res.status(400).json(result);
+      }
+
       res.status(200).json({
         success: true,
-        message: "Usuarios obtenidos exitosamente",
-        users: users,
-        total: users.length
+        message: result.message,
+        users: result.data?.users || [],
+        total: result.data?.users?.length || 0,
+        paginationToken: result.data?.paginationToken,
+        hasMore: result.data?.hasMore || false
       });
 
     } catch (err) {

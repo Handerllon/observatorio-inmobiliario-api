@@ -10,6 +10,7 @@ import {
   AdminUpdateUserAttributesCommand,
   AdminDisableUserCommand,
   AdminEnableUserCommand,
+  ListUsersCommand,
   ChangePasswordCommand,
   GlobalSignOutCommand,
   GetUserCommand,
@@ -544,6 +545,61 @@ export class CognitoService {
       };
     } catch (error: any) {
       logger.error("Error al habilitar usuario:", error);
+      return {
+        success: false,
+        message: this.parseErrorMessage(error),
+      };
+    }
+  }
+
+  /**
+   * Listar todos los usuarios del User Pool
+   * Soporta paginación
+   */
+  async listUsers(limit: number = 60, paginationToken?: string): Promise<CognitoResponse> {
+    try {
+      const command = new ListUsersCommand({
+        UserPoolId: this.config.userPoolId,
+        Limit: limit,
+        PaginationToken: paginationToken,
+      });
+
+      const response = await this.client.send(command);
+
+      // Mapear usuarios a formato más amigable
+      const users = (response.Users || []).map((user) => {
+        const attributes = user.Attributes || [];
+        const getAttributeValue = (name: string) => {
+          const attr = attributes.find((a) => a.Name === name);
+          return attr ? attr.Value : undefined;
+        };
+
+        return {
+          username: user.Username,
+          sub: getAttributeValue("sub"),
+          email: getAttributeValue("email"),
+          emailVerified: getAttributeValue("email_verified") === "true",
+          firstName: getAttributeValue("given_name"),
+          lastName: getAttributeValue("family_name"),
+          userType: getAttributeValue("custom:user_type"),
+          enabled: user.Enabled,
+          userStatus: user.UserStatus,
+          createdAt: user.UserCreateDate,
+          lastModified: user.UserLastModifiedDate,
+        };
+      });
+
+      return {
+        success: true,
+        message: "Usuarios obtenidos exitosamente",
+        data: {
+          users,
+          paginationToken: response.PaginationToken,
+          hasMore: !!response.PaginationToken,
+        },
+      };
+    } catch (error) {
+      logger.error("Error listando usuarios de Cognito:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
