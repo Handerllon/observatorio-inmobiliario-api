@@ -24,13 +24,14 @@ export interface CognitoUser {
 }
 
 export class CognitoMiddleware {
-  private static verifier: any;
+  private static accessTokenVerifier: any;
+  private static idTokenVerifier: any;
 
   /**
-   * Inicializar el verificador de JWT de Cognito
+   * Inicializar el verificador de Access Tokens de Cognito
    */
-  private static initVerifier() {
-    if (!CognitoMiddleware.verifier) {
+  private static initAccessTokenVerifier() {
+    if (!CognitoMiddleware.accessTokenVerifier) {
       const userPoolId = process.env.COGNITO_USER_POOL_ID;
       const clientId = process.env.COGNITO_CLIENT_ID;
       const region = process.env.AWS_REGION || "us-east-1";
@@ -42,17 +43,43 @@ export class CognitoMiddleware {
       }
 
       // Crear verificador para Access Tokens
-      CognitoMiddleware.verifier = CognitoJwtVerifier.create({
+      CognitoMiddleware.accessTokenVerifier = CognitoJwtVerifier.create({
         userPoolId: userPoolId,
         tokenUse: "access",
         clientId: clientId,
       });
     }
-    return CognitoMiddleware.verifier;
+    return CognitoMiddleware.accessTokenVerifier;
   }
 
   /**
-   * Middleware para autenticar requests con AWS Cognito
+   * Inicializar el verificador de ID Tokens de Cognito
+   */
+  private static initIdTokenVerifier() {
+    if (!CognitoMiddleware.idTokenVerifier) {
+      const userPoolId = process.env.COGNITO_USER_POOL_ID;
+      const clientId = process.env.COGNITO_CLIENT_ID;
+      const region = process.env.AWS_REGION || "us-east-1";
+
+      if (!userPoolId || !clientId) {
+        throw new Error(
+          "COGNITO_USER_POOL_ID y COGNITO_CLIENT_ID son requeridos"
+        );
+      }
+
+      // Crear verificador para ID Tokens (contiene información del perfil del usuario)
+      CognitoMiddleware.idTokenVerifier = CognitoJwtVerifier.create({
+        userPoolId: userPoolId,
+        tokenUse: "id",
+        clientId: clientId,
+      });
+    }
+    return CognitoMiddleware.idTokenVerifier;
+  }
+
+  /**
+   * Middleware para autenticar requests con AWS Cognito (usando Access Token)
+   * El Access Token es ideal para autorización y contiene grupos/roles
    */
   static async authenticate(
     req: Request,
@@ -78,11 +105,11 @@ export class CognitoMiddleware {
         });
       }
 
-      // Verificar el token con AWS Cognito
-      const verifier = CognitoMiddleware.initVerifier();
+      // Verificar el Access Token con AWS Cognito
+      const verifier = CognitoMiddleware.initAccessTokenVerifier();
       const payload = await verifier.verify(token);
 
-      // Extraer información del usuario del token
+      // Extraer información del usuario del Access Token
       const user: CognitoUser = {
         sub: payload.sub,
         email: payload.email || "",
@@ -101,6 +128,76 @@ export class CognitoMiddleware {
       next();
     } catch (error: any) {
       logger.error("Error en autenticación Cognito:", error);
+
+      // Mensajes específicos para diferentes tipos de error
+      let message = "Token inválido";
+      if (error.name === "JwtExpiredError") {
+        message = "Token expirado";
+      } else if (error.name === "JwtInvalidSignatureError") {
+        message = "Firma de token inválida";
+      } else if (error.name === "JwtInvalidClaimError") {
+        message = "Claims del token inválidos";
+      }
+
+      return res.status(401).json({
+        success: false,
+        message,
+      });
+    }
+  }
+
+  /**
+   * Middleware para autenticar requests con información completa del perfil (usando ID Token)
+   * El ID Token contiene todos los atributos del usuario (email, nombres, atributos personalizados)
+   * Usar este middleware para endpoints de perfil de usuario
+   */
+  static async authenticateWithProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<any> {
+    try {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader) {
+        return res.status(401).json({
+          success: false,
+          message: "Token de ID requerido",
+        });
+      }
+
+      const token = authHeader.split(" ")[1]; // Bearer TOKEN
+
+      if (!token) {
+        return res.status(401).json({
+          success: false,
+          message: "Token de ID requerido",
+        });
+      }
+
+      // Verificar el ID Token con AWS Cognito
+      const verifier = CognitoMiddleware.initIdTokenVerifier();
+      const payload = await verifier.verify(token);
+
+      // Extraer información completa del usuario del ID Token
+      const user: CognitoUser = {
+        sub: payload.sub,
+        email: payload.email || "",
+        email_verified: payload.email_verified || false,
+        given_name: payload.given_name,
+        family_name: payload.family_name,
+        groups: payload["cognito:groups"] || [],
+        username: payload.username || payload["cognito:username"],
+        user_type: payload["custom:user_type"] as "Propietario" | "Agente" | "Inquilino" | undefined,
+      };
+
+      // Añadir el usuario y payload completo al request
+      req.user = user;
+      req.cognitoPayload = payload;
+
+      next();
+    } catch (error: any) {
+      logger.error("Error en autenticación con perfil Cognito:", error);
 
       // Mensajes específicos para diferentes tipos de error
       let message = "Token inválido";
@@ -157,6 +254,7 @@ export class CognitoMiddleware {
   /**
    * Middleware opcional para autenticación (no falla si no hay token)
    * Útil para endpoints que pueden ser públicos o privados
+   * Usa Access Token por defecto
    */
   static async optionalAuthenticate(
     req: Request,
@@ -176,8 +274,8 @@ export class CognitoMiddleware {
         return next(); // Continuar sin autenticación
       }
 
-      // Intentar verificar el token
-      const verifier = CognitoMiddleware.initVerifier();
+      // Intentar verificar el Access Token
+      const verifier = CognitoMiddleware.initAccessTokenVerifier();
       const payload = await verifier.verify(token);
 
       const user: CognitoUser = {

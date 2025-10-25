@@ -309,10 +309,13 @@
 									"    pm.expect(responseJson.message).to.include('Token válido');",
 									"});",
 									"",
-									"pm.test('Response contains user info', function () {",
+									"pm.test('Response contains complete user info from ID Token', function () {",
 									"    const responseJson = pm.response.json();",
 									"    pm.expect(responseJson.user).to.not.be.undefined;",
 									"    pm.expect(responseJson.user.email).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.email).to.not.be.empty;",
+									"    pm.expect(responseJson.user.firstName).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.lastName).to.not.be.undefined;",
 									"});"
 								],
 								"type": "text/javascript"
@@ -324,8 +327,9 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"value": "Bearer {{id_token}}",
+								"type": "text",
+								"description": "⚠️ IMPORTANTE: Usar ID Token para obtener el perfil completo del usuario"
 							}
 						],
 						"url": {
@@ -338,7 +342,7 @@
 								"validate-token"
 							]
 						},
-						"description": "Valida el access token de AWS Cognito y retorna información del usuario."
+						"description": "Valida el ID token de AWS Cognito y retorna información completa del usuario.\n\n⚠️ **IMPORTANTE:** Este endpoint requiere el **ID Token** (no el Access Token).\n\n**Uso típico:**\n- Verificar que el usuario está autenticado\n- Obtener información actualizada del perfil\n- Refrescar la sesión del usuario en el frontend"
 					},
 					"response": []
 				},
@@ -417,10 +421,21 @@
 									"    pm.expect(responseJson.user.id).to.not.be.undefined;",
 									"});",
 									"",
-									"pm.test('User has Cognito attributes', function () {",
+									"pm.test('User has complete profile attributes from ID Token', function () {",
 									"    const responseJson = pm.response.json();",
 									"    pm.expect(responseJson.user.username).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.email).to.not.be.empty;",
+									"    pm.expect(responseJson.user.firstName).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.lastName).to.not.be.undefined;",
 									"    pm.expect(responseJson.user.groups).to.be.an('array');",
+									"});",
+									"",
+									"pm.test('User type is present if set', function () {",
+									"    const responseJson = pm.response.json();",
+									"    // userType puede ser undefined si no se estableció durante el registro",
+									"    if (responseJson.user.userType) {",
+									"        pm.expect(['Propietario', 'Agente', 'Inquilino']).to.include(responseJson.user.userType);",
+									"    }",
 									"});"
 								],
 								"type": "text/javascript"
@@ -432,8 +447,9 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"value": "Bearer {{id_token}}",
+								"type": "text",
+								"description": "⚠️ IMPORTANTE: Usar ID Token (no Access Token) para obtener todos los atributos del perfil"
 							}
 						],
 						"url": {
@@ -446,7 +462,7 @@
 								"profile"
 							]
 						},
-						"description": "Obtiene el perfil del usuario autenticado desde AWS Cognito."
+						"description": "Obtiene el perfil completo del usuario autenticado desde AWS Cognito.\n\n⚠️ **IMPORTANTE:** Este endpoint requiere el **ID Token** (no el Access Token).\n\n**¿Por qué ID Token?**\n- El ID Token contiene todos los atributos del usuario: email, firstName, lastName, userType\n- El Access Token solo contiene información de autorización: sub, username, groups\n\n**Respuesta incluye:**\n- id (sub de Cognito)\n- email\n- firstName (given_name)\n- lastName (family_name)\n- username\n- groups (roles)\n- emailVerified\n- userType (custom:user_type)"
 					},
 					"response": []
 				},
@@ -476,8 +492,9 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
-								"type": "text"
+								"value": "Bearer {{id_token}}",
+								"type": "text",
+								"description": "⚠️ IMPORTANTE: Usar ID Token para obtener el perfil completo del usuario"
 							},
 							{
 								"key": "Content-Type",
@@ -499,7 +516,7 @@
 								"profile"
 							]
 						},
-						"description": "Actualiza el perfil del usuario autenticado en AWS Cognito."
+						"description": "Actualiza el perfil del usuario autenticado en AWS Cognito.\n\n⚠️ **IMPORTANTE:** Este endpoint requiere el **ID Token** (no el Access Token).\n\n**Campos actualizables:**\n- firstName (actualiza given_name en Cognito)\n- lastName (actualiza family_name en Cognito)\n- email (actualiza email en Cognito, puede requerir verificación)\n- userType (actualiza custom:user_type en Cognito)"
 					},
 					"response": []
 				},

@@ -19,18 +19,20 @@ export class UserRouter {
     router.post(`${this.prefix}/confirm-forgot-password`, this.controller.confirmForgotPassword);
 
     // Rutas que requieren autenticación con Cognito
+    // Endpoints de perfil usan authenticateWithProfile (ID Token) para obtener todos los atributos del usuario
     router.get(
       `${this.prefix}/profile`, 
-      CognitoMiddleware.authenticate, 
+      CognitoMiddleware.authenticateWithProfile, 
       this.controller.getProfile
     );
     
     router.put(
       `${this.prefix}/profile`, 
-      CognitoMiddleware.authenticate, 
+      CognitoMiddleware.authenticateWithProfile, 
       this.controller.updateProfile
     );
     
+    // Otros endpoints usan authenticate (Access Token) que es suficiente para autorización
     router.post(
       `${this.prefix}/change-password`, 
       CognitoMiddleware.authenticate, 
@@ -39,7 +41,7 @@ export class UserRouter {
     
     router.get(
       `${this.prefix}/validate-token`, 
-      CognitoMiddleware.authenticate, 
+      CognitoMiddleware.authenticateWithProfile, 
       this.controller.validateToken
     );
 
