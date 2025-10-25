@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { CognitoJwtVerifier } from "aws-jwt-verify";
+import { logger } from "../utils/Logger";
 
 // Extender la interfaz Request para incluir información del usuario de Cognito
 declare global {
@@ -99,7 +100,7 @@ export class CognitoMiddleware {
 
       next();
     } catch (error: any) {
-      console.error("Error en autenticación Cognito:", error);
+      logger.error("Error en autenticación Cognito:", error);
 
       // Mensajes específicos para diferentes tipos de error
       let message = "Token inválido";
@@ -194,7 +195,7 @@ export class CognitoMiddleware {
       req.cognitoPayload = payload;
     } catch (error) {
       // Si hay error, simplemente continuar sin autenticación
-      console.log("Token inválido en autenticación opcional:", error);
+      logger.debug("Token inválido en autenticación opcional:", error);
     }
 
     next();

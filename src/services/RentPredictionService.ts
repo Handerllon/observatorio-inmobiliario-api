@@ -1,6 +1,7 @@
 import { AppDataSource } from "../DataSource";
 import { RentPrediction, PredictionStatus } from "../entities/RentPrediction.entity";
 import { FindOptionsWhere, Between } from "typeorm";
+import { logger } from "../utils/Logger";
 
 export interface CreatePredictionDto {
   cognitoSub: string;
@@ -62,7 +63,7 @@ export class RentPredictionService {
 
       return await this.predictionRepository.save(prediction);
     } catch (error) {
-      console.error("Error al crear predicción:", error);
+      logger.error("Error al crear predicción:", error);
       throw new Error("No se pudo crear el registro de predicción");
     }
   }
@@ -86,7 +87,7 @@ export class RentPredictionService {
       Object.assign(prediction, data);
       return await this.predictionRepository.save(prediction);
     } catch (error) {
-      console.error("Error al actualizar predicción:", error);
+      logger.error("Error al actualizar predicción:", error);
       throw new Error("No se pudo actualizar la predicción");
     }
   }
@@ -100,7 +101,7 @@ export class RentPredictionService {
         where: { id },
       });
     } catch (error) {
-      console.error("Error al obtener predicción:", error);
+      logger.error("Error al obtener predicción:", error);
       return null;
     }
   }
@@ -127,7 +128,7 @@ export class RentPredictionService {
         order: { createdAt: "DESC" },
       });
     } catch (error) {
-      console.error("Error al obtener predicciones del usuario:", error);
+      logger.error("Error al obtener predicciones del usuario:", error);
       return [];
     }
   }
@@ -197,7 +198,7 @@ export class RentPredictionService {
         .orderBy("prediction.createdAt", "DESC")
         .getMany();
     } catch (error) {
-      console.error("Error al obtener predicciones con filtros:", error);
+      logger.error("Error al obtener predicciones con filtros:", error);
       return [];
     }
   }
@@ -218,7 +219,7 @@ export class RentPredictionService {
       prediction.isFavorite = !prediction.isFavorite;
       return await this.predictionRepository.save(prediction);
     } catch (error) {
-      console.error("Error al marcar como favorito:", error);
+      logger.error("Error al marcar como favorito:", error);
       throw new Error("No se pudo actualizar el estado de favorito");
     }
   }
@@ -243,7 +244,7 @@ export class RentPredictionService {
       prediction.userNotes = notes;
       return await this.predictionRepository.save(prediction);
     } catch (error) {
-      console.error("Error al agregar notas:", error);
+      logger.error("Error al agregar notas:", error);
       throw new Error("No se pudo agregar las notas");
     }
   }
@@ -256,7 +257,7 @@ export class RentPredictionService {
       const result = await this.predictionRepository.delete({ id, cognitoSub });
       return result.affected !== undefined && result.affected > 0;
     } catch (error) {
-      console.error("Error al eliminar predicción:", error);
+      logger.error("Error al eliminar predicción:", error);
       return false;
     }
   }
@@ -302,7 +303,7 @@ export class RentPredictionService {
         averagePrice: Math.round(averagePrice * 100) / 100,
       };
     } catch (error) {
-      console.error("Error al obtener estadísticas:", error);
+      logger.error("Error al obtener estadísticas:", error);
       return {
         total: 0,
         successful: 0,
@@ -327,7 +328,7 @@ export class RentPredictionService {
         take: limit,
       });
     } catch (error) {
-      console.error("Error al obtener predicciones recientes:", error);
+      logger.error("Error al obtener predicciones recientes:", error);
       return [];
     }
   }

@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { UserService, CreateUserDto, LoginDto, UpdateUserDto } from "../services/UserService";
 import { CognitoService, RegisterDto } from "../services/CognitoService";
+import { logger } from "../utils/Logger";
 
 export class UserController {
   private static service: UserService = new UserService();
@@ -33,7 +34,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error en registro:", err);
+      logger.error("Error en registro:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -60,7 +61,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error en login:", err);
+      logger.error("Error en login:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -97,7 +98,7 @@ export class UserController {
       });
 
     } catch (err) {
-      console.error("Error al obtener perfil:", err);
+      logger.error("Error al obtener perfil:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -142,7 +143,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error al actualizar perfil:", err);
+      logger.error("Error al actualizar perfil:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -181,7 +182,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error al cambiar contraseña:", err);
+      logger.error("Error al cambiar contraseña:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -204,7 +205,7 @@ export class UserController {
       });
 
     } catch (err) {
-      console.error("Error al obtener usuarios:", err);
+      logger.error("Error al obtener usuarios:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -237,7 +238,7 @@ export class UserController {
       });
 
     } catch (err) {
-      console.error("Error al obtener usuario:", err);
+      logger.error("Error al obtener usuario:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -282,7 +283,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error al actualizar usuario:", err);
+      logger.error("Error al actualizar usuario:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -317,7 +318,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error al deshabilitar usuario:", err);
+      logger.error("Error al deshabilitar usuario:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -347,7 +348,7 @@ export class UserController {
       });
 
     } catch (err) {
-      console.error("Error al validar token:", err);
+      logger.error("Error al validar token:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -376,7 +377,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error al confirmar registro:", err);
+      logger.error("Error al confirmar registro:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -402,7 +403,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error en forgot password:", err);
+      logger.error("Error en forgot password:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -432,7 +433,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error al confirmar nueva contraseña:", err);
+      logger.error("Error al confirmar nueva contraseña:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"
@@ -458,7 +459,7 @@ export class UserController {
       res.status(statusCode).json(result);
 
     } catch (err) {
-      console.error("Error al cerrar sesión:", err);
+      logger.error("Error al cerrar sesión:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor"

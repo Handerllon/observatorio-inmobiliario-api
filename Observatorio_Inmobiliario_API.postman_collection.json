@@ -1085,7 +1085,7 @@
 						}
 					],
 					"request": {
-						"method": "PUT",
+						"method": "POST",
 						"header": [
 							{
 								"key": "Authorization",
@@ -1154,7 +1154,7 @@
 						],
 						"body": {
 							"mode": "raw",
-							"raw": "{\n    \"userNotes\": \"Esta consulta es para el departamento de Av. Santa Fe 2500. Precio acorde con la zona.\"\n}"
+							"raw": "{\n    \"notes\": \"Esta consulta es para el departamento de Av. Santa Fe 2500. Precio acorde con la zona.\"\n}"
 						},
 						"url": {
 							"raw": "{{base_url}}/predictions/{{prediction_id}}/notes",

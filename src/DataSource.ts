@@ -1,6 +1,7 @@
 import * as path from 'path'
 import * as dotenv from 'dotenv';
 import { DataSource } from "typeorm";
+import { logger } from "./utils/Logger";
 
 dotenv.config({
     path: path.resolve(__dirname, '../.env')
@@ -38,10 +39,10 @@ const AppDataSource = new DataSource({
 // Initialize and expose the DataSource
 AppDataSource.initialize()
     .then(() => {
-        console.log("Data Source has been initialized!");
+        logger.info("✅ Data Source has been initialized!");
     })
     .catch((err) => {
-        console.error("Error during Data Source initialization", err);
+        logger.error("❌ Error during Data Source initialization", err);
     });
 
 export { AppDataSource };

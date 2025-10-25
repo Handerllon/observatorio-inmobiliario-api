@@ -4,6 +4,7 @@ import { RentPredictionService, CreatePredictionDto } from "../services/RentPred
 import { PredictionStatus } from "../entities/RentPrediction.entity";
 import { AwsAdapter } from "../utils/AwsAdapter";
 import { OverpassAdapter } from "../utils/OverpassAdapter";
+import { logger } from "../utils/Logger";
 
 /**
  * RentController
@@ -50,13 +51,12 @@ export class RentController {
     try {
         const user = req.user;
         
-        console.log("🎯 Iniciando proceso de predicción...");
-        console.log("👤 Usuario:", user ? user.email : "Sin autenticación");
+        logger.info(`🎯 Iniciando proceso de predicción - Usuario: ${user ? user.email : "Anónimo"}`);
 
         // PASO 1: Obtener datos de AWS en paralelo
         // - Lambda: Predicción ML + imágenes + métricas (todo en executePrediction)
         // - Location Service: Geocodificación (coordenadas)
-        console.log("📡 Obteniendo datos desde AWS...");
+        logger.debug("📡 Obteniendo datos desde AWS (Lambda + Location)...");
         
         const [predictionResult, coordinates] = await Promise.all([
           RentController.awsAdapter.executePrediction(req.body),
@@ -66,19 +66,19 @@ export class RentController {
           )
         ]);
         
-        console.log("✅ Predicción obtenida exitosamente");
+        logger.info("✅ Predicción obtenida exitosamente desde AWS");
 
         // PASO 2: Buscar lugares cercanos usando Overpass (solo si hay coordenadas)
         let nearbyPlaces = null;
         if (coordinates) {
-          console.log("📍 Buscando lugares cercanos con Overpass...");
+          logger.debug(`📍 Buscando lugares cercanos con Overpass para coords: ${coordinates.lat}, ${coordinates.lng}`);
           nearbyPlaces = await RentController.overpassAdapter.getNearbyPlaces(
             coordinates.lat,
             coordinates.lng
           );
-          console.log("✅ Lugares cercanos obtenidos");
+          logger.info(`✅ Lugares cercanos obtenidos: ${nearbyPlaces?.summary?.total || 0} lugares`);
         } else {
-          console.log("⚠️  No se pudieron obtener coordenadas, omitiendo lugares cercanos");
+          logger.warning("⚠️  No se pudieron obtener coordenadas, omitiendo lugares cercanos");
         }
 
         // PASO 3: Crear registro de predicción inicial (si hay usuario)
@@ -98,15 +98,14 @@ export class RentController {
             calle: predictionResult.input_data?.calle,
           };
 
-          console.log("💾 Guardando predicción en base de datos...");
-          // Descomentar cuando RentPredictionService esté configurado
+          logger.debug("💾 Guardando predicción en base de datos...");
           predictionRecord = await RentController.predictionService.createPrediction(predictionData);
-          console.log("✅ Predicción guardada (mock)");
+          logger.info(`✅ Predicción guardada con ID: ${predictionRecord?.id}`);
         }
 
         // PASO 4: Calcular tiempo de ejecución
         const executionTimeMs = Date.now() - startTime;
-        console.log(`⏱️  Tiempo de ejecución: ${executionTimeMs}ms`);
+        logger.info(`⏱️  Tiempo de ejecución total: ${executionTimeMs}ms`);
 
         // PASO 5: Actualizar registro con resultado exitoso (si hay usuario)
         if (predictionRecord) {
@@ -134,20 +133,25 @@ export class RentController {
           timestamp: new Date().toISOString()
         };
 
-        console.log("🎉 Predicción completada exitosamente");
+        logger.info("🎉 Predicción completada exitosamente");
         return res.status(200).json(response);
 
     } catch (err) {
         const executionTimeMs = Date.now() - startTime;
-        console.error("❌ Error en proceso de predicción:", err);
+        logger.error("❌ Error en proceso de predicción:", err);
 
         // Actualizar registro como error (si existe)
         if (predictionRecord) {
-          await RentController.predictionService.updatePrediction(predictionRecord.id, {
-            status: PredictionStatus.ERROR,
-            errorMessage: err instanceof Error ? err.message : "Error desconocido",
-            executionTimeMs: executionTimeMs,
-          });
+          try {
+            await RentController.predictionService.updatePrediction(predictionRecord.id, {
+              status: PredictionStatus.ERROR,
+              errorMessage: err instanceof Error ? err.message : "Error desconocido",
+              executionTimeMs: executionTimeMs,
+            });
+            logger.debug(`Registro de error guardado para predicción ${predictionRecord.id}`);
+          } catch (updateErr) {
+            logger.error("Error al actualizar registro de predicción con error:", updateErr);
+          }
         }
 
         // Retornar error al cliente

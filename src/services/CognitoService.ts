@@ -21,6 +21,7 @@ import {
   CognitoUserAttribute,
 } from "amazon-cognito-identity-js";
 import * as crypto from "crypto";
+import { logger } from "../utils/Logger";
 
 export interface CognitoConfig {
   region: string;
@@ -150,7 +151,7 @@ export class CognitoService {
         },
       };
     } catch (error: any) {
-      console.error("Error en registro Cognito:", error);
+      logger.error("Error en registro Cognito:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -186,7 +187,7 @@ export class CognitoService {
         message: "Email verificado exitosamente. Ahora puedes iniciar sesión.",
       };
     } catch (error: any) {
-      console.error("Error en confirmación:", error);
+      logger.error("Error en confirmación:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -236,7 +237,7 @@ export class CognitoService {
         },
       };
     } catch (error: any) {
-      console.error("Error en login:", error);
+      logger.error("Error en login:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -270,7 +271,7 @@ export class CognitoService {
         },
       };
     } catch (error: any) {
-      console.error("Error al obtener usuario:", error);
+      logger.error("Error al obtener usuario:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -300,7 +301,7 @@ export class CognitoService {
         message: "Contraseña actualizada exitosamente",
       };
     } catch (error: any) {
-      console.error("Error al cambiar contraseña:", error);
+      logger.error("Error al cambiar contraseña:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -333,7 +334,7 @@ export class CognitoService {
           "Se ha enviado un código de verificación a tu email para restablecer la contraseña.",
       };
     } catch (error: any) {
-      console.error("Error en forgot password:", error);
+      logger.error("Error en forgot password:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -371,7 +372,7 @@ export class CognitoService {
         message: "Contraseña restablecida exitosamente. Ahora puedes iniciar sesión.",
       };
     } catch (error: any) {
-      console.error("Error en confirm forgot password:", error);
+      logger.error("Error en confirm forgot password:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -395,7 +396,7 @@ export class CognitoService {
         message: "Sesión cerrada exitosamente en todos los dispositivos",
       };
     } catch (error: any) {
-      console.error("Error en global sign out:", error);
+      logger.error("Error en global sign out:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -421,7 +422,7 @@ export class CognitoService {
         message: `Usuario agregado al grupo ${groupName} exitosamente`,
       };
     } catch (error: any) {
-      console.error("Error al agregar usuario a grupo:", error);
+      logger.error("Error al agregar usuario a grupo:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -458,7 +459,7 @@ export class CognitoService {
         },
       };
     } catch (error: any) {
-      console.error("Error al obtener usuario (admin):", error);
+      logger.error("Error al obtener usuario (admin):", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -492,7 +493,7 @@ export class CognitoService {
         message: "Atributos de usuario actualizados exitosamente",
       };
     } catch (error: any) {
-      console.error("Error al actualizar atributos:", error);
+      logger.error("Error al actualizar atributos:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -517,7 +518,7 @@ export class CognitoService {
         message: "Usuario deshabilitado exitosamente",
       };
     } catch (error: any) {
-      console.error("Error al deshabilitar usuario:", error);
+      logger.error("Error al deshabilitar usuario:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),
@@ -542,7 +543,7 @@ export class CognitoService {
         message: "Usuario habilitado exitosamente",
       };
     } catch (error: any) {
-      console.error("Error al habilitar usuario:", error);
+      logger.error("Error al habilitar usuario:", error);
       return {
         success: false,
         message: this.parseErrorMessage(error),

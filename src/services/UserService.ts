@@ -3,6 +3,7 @@ import { User } from "../entities/User.entity";
 import * as jwt from "jsonwebtoken";
 import * as bcrypt from "bcryptjs";
 import { validate } from "class-validator";
+import { logger } from "../utils/Logger";
 
 export interface CreateUserDto {
   firstName: string;
@@ -86,7 +87,7 @@ export class UserService {
       };
 
     } catch (error) {
-      console.error("Error en registro:", error);
+      logger.error("Error en registro:", error);
       return {
         success: false,
         message: "Error interno del servidor"
@@ -132,7 +133,7 @@ export class UserService {
       };
 
     } catch (error) {
-      console.error("Error en login:", error);
+      logger.error("Error en login:", error);
       return {
         success: false,
         message: "Error interno del servidor"
@@ -146,7 +147,7 @@ export class UserService {
         where: { id, isActive: true }
       });
     } catch (error) {
-      console.error("Error al obtener usuario:", error);
+      logger.error("Error al obtener usuario:", error);
       return null;
     }
   }
@@ -158,7 +159,7 @@ export class UserService {
         order: { createdAt: "DESC" }
       });
     } catch (error) {
-      console.error("Error al obtener usuarios:", error);
+      logger.error("Error al obtener usuarios:", error);
       return [];
     }
   }
@@ -219,7 +220,7 @@ export class UserService {
       };
 
     } catch (error) {
-      console.error("Error al actualizar usuario:", error);
+      logger.error("Error al actualizar usuario:", error);
       return {
         success: false,
         message: "Error interno del servidor"
@@ -268,7 +269,7 @@ export class UserService {
       };
 
     } catch (error) {
-      console.error("Error al cambiar contraseña:", error);
+      logger.error("Error al cambiar contraseña:", error);
       return {
         success: false,
         message: "Error interno del servidor"
@@ -299,7 +300,7 @@ export class UserService {
       };
 
     } catch (error) {
-      console.error("Error al eliminar usuario:", error);
+      logger.error("Error al eliminar usuario:", error);
       return {
         success: false,
         message: "Error interno del servidor"

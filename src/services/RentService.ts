@@ -1,3 +1,5 @@
+import { logger } from "../utils/Logger";
+
 /**
  * RentService
  * 
@@ -95,8 +97,8 @@ export class RentService {
       // Preparar para DB
       const dbData = this.preparePredictionForDB(predictionData, userId);
 
-      console.log("💾 Guardando predicción en base de datos...");
-      console.log("📊 Datos:", JSON.stringify(dbData, null, 2));
+      logger.debug("💾 Guardando predicción en base de datos...");
+      logger.debug("📊 Datos:", JSON.stringify(dbData, null, 2));
 
       // TODO: Implementar guardado real en base de datos
       // const savedPrediction = await predictionRepository.save(dbData);
@@ -108,7 +110,7 @@ export class RentService {
         ...dbData
       };
     } catch (error) {
-      console.error("❌ Error guardando predicción:", error);
+      logger.error("❌ Error guardando predicción:", error);
       throw error;
     }
   }
@@ -122,7 +124,7 @@ export class RentService {
    */
   async getUserPredictionHistory(userId: string, limit: number = 10): Promise<any[]> {
     try {
-      console.log(`📖 Obteniendo historial de predicciones para usuario: ${userId}`);
+      logger.debug(`📖 Obteniendo historial de predicciones para usuario: ${userId}`);
 
       // TODO: Implementar consulta real a base de datos
       // const predictions = await predictionRepository.find({
@@ -135,7 +137,7 @@ export class RentService {
       // Por ahora, retornar array vacío
       return [];
     } catch (error) {
-      console.error("❌ Error obteniendo historial:", error);
+      logger.error("❌ Error obteniendo historial:", error);
       throw error;
     }
   }
@@ -148,7 +150,7 @@ export class RentService {
    */
   async getPredictionById(predictionId: string): Promise<any | null> {
     try {
-      console.log(`🔍 Buscando predicción: ${predictionId}`);
+      logger.debug(`🔍 Buscando predicción: ${predictionId}`);
 
       // TODO: Implementar consulta real a base de datos
       // const prediction = await predictionRepository.findOne({
@@ -159,7 +161,7 @@ export class RentService {
       // Por ahora, retornar null
       return null;
     } catch (error) {
-      console.error("❌ Error obteniendo predicción:", error);
+      logger.error("❌ Error obteniendo predicción:", error);
       throw error;
     }
   }
@@ -172,14 +174,14 @@ export class RentService {
    */
   async deletePrediction(predictionId: string): Promise<boolean> {
     try {
-      console.log(`🗑️  Eliminando predicción: ${predictionId}`);
+      logger.debug(`🗑️  Eliminando predicción: ${predictionId}`);
 
       // TODO: Implementar eliminación real de base de datos
       // await predictionRepository.delete(predictionId);
       
       return true;
     } catch (error) {
-      console.error("❌ Error eliminando predicción:", error);
+      logger.error("❌ Error eliminando predicción:", error);
       throw error;
     }
   }
@@ -193,7 +195,7 @@ export class RentService {
    */
   async updatePrediction(predictionId: string, updateData: any): Promise<any> {
     try {
-      console.log(`✏️  Actualizando predicción: ${predictionId}`);
+      logger.debug(`✏️  Actualizando predicción: ${predictionId}`);
 
       // TODO: Implementar actualización real en base de datos
       // const updated = await predictionRepository.update(predictionId, {
@@ -208,7 +210,7 @@ export class RentService {
         updatedAt: new Date()
       };
     } catch (error) {
-      console.error("❌ Error actualizando predicción:", error);
+      logger.error("❌ Error actualizando predicción:", error);
       throw error;
     }
   }

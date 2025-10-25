@@ -9,6 +9,7 @@ import "reflect-metadata";
 import { RentRouter } from "./routes/RentRouter";
 import { UserRouter } from "./routes/UserRouter";
 import { RentPredictionRouter } from "./routes/RentPredictionRouter";
+import { logger } from "./utils/Logger";
 
 
 class App {
@@ -42,8 +43,8 @@ class App {
         res: express.Response,
         next: express.NextFunction
       ) => {
-        console.log(
-          `Received ${req.method} request from ${req.ip} to ${req.originalUrl}`
+        logger.info(
+          `📥 ${req.method} ${req.originalUrl} - IP: ${req.ip}`
         );
         next(); // Continue processing the request
       }

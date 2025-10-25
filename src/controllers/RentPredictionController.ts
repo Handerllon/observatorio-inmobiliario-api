@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { RentPredictionService, PredictionFilters } from "../services/RentPredictionService";
+import { logger } from "../utils/Logger";
 
 export class RentPredictionController {
   private static service: RentPredictionService = new RentPredictionService();
@@ -12,11 +13,14 @@ export class RentPredictionController {
       const user = req.user;
 
       if (!user) {
+        logger.warning("Intento de acceso no autenticado a /predictions");
         return res.status(401).json({
           success: false,
           message: "Usuario no autenticado",
         });
       }
+
+      logger.info(`📋 Usuario ${user.email} obteniendo historial de predicciones`);
 
       // Obtener filtros del query params
       const filters: PredictionFilters = {
@@ -52,7 +56,7 @@ export class RentPredictionController {
         total: predictions.length,
       });
     } catch (err) {
-      console.error("Error al obtener predicciones:", err);
+      logger.error("Error al obtener predicciones:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
@@ -68,6 +72,7 @@ export class RentPredictionController {
       const user = req.user;
 
       if (!user) {
+        logger.warning("Intento de acceso no autenticado a /predictions/recent");
         return res.status(401).json({
           success: false,
           message: "Usuario no autenticado",
@@ -75,6 +80,8 @@ export class RentPredictionController {
       }
 
       const limit = parseInt(req.query.limit as string) || 10;
+      logger.info(`📋 Usuario ${user.email} obteniendo predicciones recientes (limit: ${limit})`);
+      
       const predictions = await RentPredictionController.service.getRecentPredictions(
         user.sub,
         limit
@@ -87,7 +94,7 @@ export class RentPredictionController {
         total: predictions.length,
       });
     } catch (err) {
-      console.error("Error al obtener predicciones recientes:", err);
+      logger.error("Error al obtener predicciones recientes:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
@@ -104,15 +111,19 @@ export class RentPredictionController {
       const { id } = req.params;
 
       if (!user) {
+        logger.warning("Intento de acceso no autenticado a /predictions/:id");
         return res.status(401).json({
           success: false,
           message: "Usuario no autenticado",
         });
       }
 
+      logger.debug(`Usuario ${user.email} solicitando predicción ID: ${id}`);
+
       const prediction = await RentPredictionController.service.getPredictionById(id);
 
       if (!prediction) {
+        logger.warning(`Predicción ${id} no encontrada`);
         return res.status(404).json({
           success: false,
           message: "Predicción no encontrada",
@@ -121,6 +132,7 @@ export class RentPredictionController {
 
       // Verificar que la predicción pertenezca al usuario
       if (prediction.cognitoSub !== user.sub) {
+        logger.warning(`Usuario ${user.email} intentó acceder a predicción de otro usuario (${id})`);
         return res.status(403).json({
           success: false,
           message: "No tienes permiso para acceder a esta predicción",
@@ -133,7 +145,7 @@ export class RentPredictionController {
         prediction,
       });
     } catch (err) {
-      console.error("Error al obtener predicción:", err);
+      logger.error("Error al obtener predicción:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
@@ -150,11 +162,14 @@ export class RentPredictionController {
       const { id } = req.params;
 
       if (!user) {
+        logger.warning("Intento de acceso no autenticado a /predictions/:id/favorite");
         return res.status(401).json({
           success: false,
           message: "Usuario no autenticado",
         });
       }
+
+      logger.info(`⭐ Usuario ${user.email} toggling favorite para predicción ${id}`);
 
       const prediction = await RentPredictionController.service.toggleFavorite(
         id,
@@ -162,11 +177,14 @@ export class RentPredictionController {
       );
 
       if (!prediction) {
+        logger.warning(`Predicción ${id} no encontrada o no pertenece al usuario`);
         return res.status(404).json({
           success: false,
           message: "Predicción no encontrada",
         });
       }
+
+      logger.info(`Predicción ${id} ${prediction.isFavorite ? "marcada como" : "removida de"} favoritos`);
 
       res.status(200).json({
         success: true,
@@ -174,7 +192,7 @@ export class RentPredictionController {
         prediction,
       });
     } catch (err) {
-      console.error("Error al actualizar favorito:", err);
+      logger.error("Error al actualizar favorito:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
@@ -192,18 +210,22 @@ export class RentPredictionController {
       const { notes } = req.body;
 
       if (!user) {
+        logger.warning("Intento de acceso no autenticado a /predictions/:id/notes");
         return res.status(401).json({
           success: false,
           message: "Usuario no autenticado",
         });
       }
 
-      if (notes === undefined) {
+      if (notes === undefined || notes === null) {
+        logger.warning(`Usuario ${user.email} intentó actualizar notas sin campo 'notes'`);
         return res.status(400).json({
           success: false,
-          message: "El campo 'notes' es requerido",
+          message: "El campo 'notes' es requerido en el body. Ejemplo: { \"notes\": \"Mi nota\" }",
         });
       }
+
+      logger.info(`📝 Usuario ${user.email} actualizando notas para predicción ${id}`);
 
       const prediction = await RentPredictionController.service.addNotes(
         id,
@@ -212,6 +234,7 @@ export class RentPredictionController {
       );
 
       if (!prediction) {
+        logger.warning(`Predicción ${id} no encontrada o no pertenece al usuario`);
         return res.status(404).json({
           success: false,
           message: "Predicción no encontrada",
@@ -224,7 +247,7 @@ export class RentPredictionController {
         prediction,
       });
     } catch (err) {
-      console.error("Error al actualizar notas:", err);
+      logger.error("Error al actualizar notas:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
@@ -241,11 +264,14 @@ export class RentPredictionController {
       const { id } = req.params;
 
       if (!user) {
+        logger.warning("Intento de acceso no autenticado a DELETE /predictions/:id");
         return res.status(401).json({
           success: false,
           message: "Usuario no autenticado",
         });
       }
+
+      logger.info(`🗑️  Usuario ${user.email} eliminando predicción ${id}`);
 
       const deleted = await RentPredictionController.service.deletePrediction(
         id,
@@ -253,18 +279,21 @@ export class RentPredictionController {
       );
 
       if (!deleted) {
+        logger.warning(`Predicción ${id} no encontrada o no pertenece al usuario`);
         return res.status(404).json({
           success: false,
           message: "Predicción no encontrada",
         });
       }
 
+      logger.info(`Predicción ${id} eliminada exitosamente`);
+
       res.status(200).json({
         success: true,
         message: "Predicción eliminada exitosamente",
       });
     } catch (err) {
-      console.error("Error al eliminar predicción:", err);
+      logger.error("Error al eliminar predicción:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
@@ -280,11 +309,14 @@ export class RentPredictionController {
       const user = req.user;
 
       if (!user) {
+        logger.warning("Intento de acceso no autenticado a /predictions/statistics");
         return res.status(401).json({
           success: false,
           message: "Usuario no autenticado",
         });
       }
+
+      logger.info(`📊 Usuario ${user.email} obteniendo estadísticas`);
 
       const statistics = await RentPredictionController.service.getUserStatistics(
         user.sub
@@ -296,7 +328,7 @@ export class RentPredictionController {
         statistics,
       });
     } catch (err) {
-      console.error("Error al obtener estadísticas:", err);
+      logger.error("Error al obtener estadísticas:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
@@ -312,11 +344,14 @@ export class RentPredictionController {
       const user = req.user;
 
       if (!user) {
+        logger.warning("Intento de acceso no autenticado a /predictions/favorites");
         return res.status(401).json({
           success: false,
           message: "Usuario no autenticado",
         });
       }
+
+      logger.info(`⭐ Usuario ${user.email} obteniendo predicciones favoritas`);
 
       const predictions = await RentPredictionController.service.getPredictions({
         cognitoSub: user.sub,
@@ -330,7 +365,7 @@ export class RentPredictionController {
         total: predictions.length,
       });
     } catch (err) {
-      console.error("Error al obtener predicciones favoritas:", err);
+      logger.error("Error al obtener predicciones favoritas:", err);
       res.status(500).json({
         success: false,
         message: "Error interno del servidor",
