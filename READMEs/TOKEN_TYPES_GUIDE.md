@@ -30,7 +30,7 @@ El middleware estaba usando **Access Token** para todos los endpoints, pero los 
 
 ## Solución Implementada
 
-### Dos Middleware Diferentes
+### Cuatro Middleware Diferentes
 
 #### 1. `authenticate` (Access Token)
 **Uso:** Endpoints que necesitan **autorización** (verificar grupos/roles)
@@ -57,7 +57,7 @@ router.get(
 );
 ```
 
-#### 2. `authenticateWithProfile` (ID Token) - **NUEVO**
+#### 2. `authenticateWithProfile` (ID Token)
 **Uso:** Endpoints que necesitan **información completa del perfil**
 
 **Contiene:**
@@ -74,6 +74,14 @@ router.get(
 - **GET /users/profile** ✅
 - **PUT /users/profile** ✅
 - **GET /users/validate-token** ✅
+- **GET /predictions** ✅
+- **GET /predictions/recent** ✅
+- **GET /predictions/statistics** ✅
+- **GET /predictions/favorites** ✅
+- **GET /predictions/:id** ✅
+- **POST /predictions/:id/favorite** ✅
+- **PUT /predictions/:id/notes** ✅
+- **DELETE /predictions/:id** ✅
 
 **Ejemplo:**
 ```typescript
@@ -81,6 +89,43 @@ router.get(
   `/users/profile`, 
   CognitoMiddleware.authenticateWithProfile,  // ✅ ID Token
   controller.getProfile
+);
+```
+
+#### 3. `optionalAuthenticate` (Access Token Opcional)
+**Uso:** Endpoints que pueden ser **públicos o privados** pero no necesitan información completa del usuario
+
+**Comportamiento:**
+- Si hay token válido, extrae información del usuario
+- Si no hay token o es inválido, continúa sin autenticación
+- No bloquea el acceso
+
+**Ejemplo:**
+```typescript
+router.get(
+  `/public/data`, 
+  CognitoMiddleware.optionalAuthenticate,  // ✅ Access Token opcional
+  controller.getData
+);
+```
+
+#### 4. `optionalAuthenticateWithProfile` (ID Token Opcional) - **NUEVO**
+**Uso:** Endpoints que pueden ser **públicos o privados** pero necesitan email y otros atributos del perfil cuando están autenticados
+
+**Comportamiento:**
+- Si hay token válido, extrae información completa del perfil (incluyendo email)
+- Si no hay token o es inválido, continúa sin autenticación
+- No bloquea el acceso
+
+**Endpoints que lo usan:**
+- **POST /rent/predict** ✅ (Permite uso anónimo pero logea y guarda email si está autenticado)
+
+**Ejemplo:**
+```typescript
+router.post(
+  `/rent/predict`, 
+  CognitoMiddleware.optionalAuthenticateWithProfile,  // ✅ ID Token opcional
+  controller.predict
 );
 ```
 

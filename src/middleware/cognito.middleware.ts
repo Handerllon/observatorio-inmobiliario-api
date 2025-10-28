@@ -300,6 +300,54 @@ export class CognitoMiddleware {
   }
 
   /**
+   * Middleware opcional para autenticación con perfil completo (no falla si no hay token)
+   * Útil para endpoints que pueden ser públicos o privados pero necesitan información del usuario
+   * Usa ID Token para obtener email y otros atributos del perfil
+   */
+  static async optionalAuthenticateWithProfile(
+    req: Request,
+    res: Response,
+    next: NextFunction
+  ): Promise<any> {
+    try {
+      const authHeader = req.headers.authorization;
+
+      if (!authHeader) {
+        return next(); // Continuar sin autenticación
+      }
+
+      const token = authHeader.split(" ")[1];
+
+      if (!token) {
+        return next(); // Continuar sin autenticación
+      }
+
+      // Intentar verificar el ID Token
+      const verifier = CognitoMiddleware.initIdTokenVerifier();
+      const payload = await verifier.verify(token);
+
+      const user: CognitoUser = {
+        sub: payload.sub,
+        email: payload.email || "",
+        email_verified: payload.email_verified || false,
+        given_name: payload.given_name,
+        family_name: payload.family_name,
+        groups: payload["cognito:groups"] || [],
+        username: payload.username || payload["cognito:username"],
+        user_type: payload["custom:user_type"] as "Propietario" | "Agente" | "Inquilino" | undefined,
+      };
+
+      req.user = user;
+      req.cognitoPayload = payload;
+    } catch (error) {
+      // Si hay error, simplemente continuar sin autenticación
+      logger.debug("Token inválido en autenticación opcional con perfil:", error);
+    }
+
+    next();
+  }
+
+  /**
    * Helper para verificar si el usuario tiene un rol específico
    */
   static hasRole(user: CognitoUser | undefined, role: string): boolean {

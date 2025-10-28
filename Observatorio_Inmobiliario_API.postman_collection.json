@@ -901,7 +901,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							}
 						],
@@ -914,7 +914,7 @@
 								"predictions"
 							]
 						},
-						"description": "Obtiene todas las predicciones del usuario autenticado, ordenadas por fecha (más recientes primero)."
+						"description": "Obtiene todas las predicciones del usuario autenticado, ordenadas por fecha (más recientes primero). **Requiere ID Token** para acceso al email del usuario."
 					},
 					"response": []
 				},
@@ -944,7 +944,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							}
 						],
@@ -979,7 +979,7 @@
 								}
 							]
 						},
-						"description": "Obtiene predicciones filtradas por barrio, dormitorios, estado y/o favoritas."
+						"description": "Obtiene predicciones filtradas por barrio, dormitorios, estado y/o favoritas. **Requiere ID Token**."
 					},
 					"response": []
 				},
@@ -1010,7 +1010,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							}
 						],
@@ -1031,7 +1031,7 @@
 								}
 							]
 						},
-						"description": "Obtiene las predicciones más recientes del usuario (por defecto 10, máximo 50)."
+						"description": "Obtiene las predicciones más recientes del usuario (por defecto 10, máximo 50). **Requiere ID Token**."
 					},
 					"response": []
 				},
@@ -1064,7 +1064,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							}
 						],
@@ -1078,7 +1078,7 @@
 								"favorites"
 							]
 						},
-						"description": "Obtiene todas las predicciones marcadas como favoritas por el usuario."
+						"description": "Obtiene todas las predicciones marcadas como favoritas por el usuario. **Requiere ID Token**."
 					},
 					"response": []
 				},
@@ -1112,7 +1112,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							}
 						],
@@ -1126,7 +1126,7 @@
 								"statistics"
 							]
 						},
-						"description": "Obtiene estadísticas generales de las predicciones del usuario (total, exitosas, fallidas, precio promedio)."
+						"description": "Obtiene estadísticas generales de las predicciones del usuario (total, exitosas, fallidas, precio promedio). **Requiere ID Token**."
 					},
 					"response": []
 				},
@@ -1157,7 +1157,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							}
 						],
@@ -1171,7 +1171,7 @@
 								"{{prediction_id}}"
 							]
 						},
-						"description": "Obtiene una predicción específica por su ID. El usuario solo puede ver sus propias predicciones."
+						"description": "Obtiene una predicción específica por su ID. El usuario solo puede ver sus propias predicciones. **Requiere ID Token**."
 					},
 					"response": []
 				},
@@ -1201,7 +1201,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							},
 							{
@@ -1225,7 +1225,7 @@
 								"favorite"
 							]
 						},
-						"description": "Marca o desmarca una predicción como favorita."
+						"description": "Marca o desmarca una predicción como favorita. **Requiere ID Token**."
 					},
 					"response": []
 				},
@@ -1255,7 +1255,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							},
 							{
@@ -1279,7 +1279,7 @@
 								"notes"
 							]
 						},
-						"description": "Actualiza las notas personales de una predicción."
+						"description": "Actualiza las notas personales de una predicción. **Requiere ID Token**."
 					},
 					"response": []
 				},
@@ -1309,7 +1309,7 @@
 						"header": [
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text"
 							}
 						],
@@ -1323,12 +1323,12 @@
 								"{{prediction_id}}"
 							]
 						},
-						"description": "Elimina permanentemente una predicción. El usuario solo puede eliminar sus propias predicciones."
+						"description": "Elimina permanentemente una predicción. El usuario solo puede eliminar sus propias predicciones. **Requiere ID Token**."
 					},
 					"response": []
 				}
 			],
-			"description": "Endpoints para gestión del historial de predicciones de renta"
+			"description": "Endpoints para gestión del historial de predicciones de renta.\n\n**Importante:** Todos estos endpoints requieren **ID Token** en lugar de Access Token para poder acceder al email del usuario y loguearlo correctamente."
 		},
 		{
 			"name": "Rent Management",
@@ -1423,9 +1423,9 @@
 							},
 							{
 								"key": "Authorization",
-								"value": "Bearer {{access_token}}",
+								"value": "Bearer {{id_token}}",
 								"type": "text",
-								"description": "Opcional - Si se incluye, guarda el historial"
+								"description": "Opcional - Si se incluye (ID Token), guarda el historial con el email del usuario"
 							}
 						],
 						"body": {
@@ -1442,7 +1442,7 @@
 								"predict"
 							]
 						},
-						"description": "Predice el precio de renta basándose en características. Si se autentica, guarda el historial automáticamente."
+						"description": "Predice el precio de renta basándose en características. Si se autentica con ID Token, guarda el historial automáticamente con el email del usuario en los logs."
 					},
 					"response": []
 				}
