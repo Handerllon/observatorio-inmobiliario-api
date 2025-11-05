@@ -233,54 +233,94 @@ export class AwsAdapter {
   private mapRequestToLambdaPayload(body: any): any {
     // Mapear barrio según tabla
     const barrio = body.barrio || body.neighborhood || "";
+    logger.debug(`🏘️  Barrio recibido: "${barrio}" (tipo: ${typeof barrio})`);
+    
     const mappedNeighborhood = this.mapNeighborhood(barrio);
+    logger.debug(`🏘️  Barrio mapeado: "${mappedNeighborhood}" (tipo: ${typeof mappedNeighborhood})`);
 
-    return {
-      total_area: body.total_area || body.metrosCuadrados || body.surface_total,
-      rooms: body.ambientes || body.rooms,
-      bedrooms: body.dormitorios || body.bedrooms,
-      antiquity: body.antiguedad || body.antiquity || body.age,
-      neighborhood: mappedNeighborhood,
-      bathrooms: body.banos || body.bathrooms,
-      garages: body.garajes || body.garages,
+    // Construir payload con validación de tipos
+    const payload = {
+      total_area: Number(body.total_area || body.metrosCuadrados || body.surface_total),
+      rooms: Number(body.ambientes || body.rooms),
+      bedrooms: Number(body.dormitorios || body.bedrooms),
+      antiquity: Number(body.antiguedad || body.antiquity || body.age),
+      neighborhood: String(mappedNeighborhood), // Asegurar que siempre sea string
+      bathrooms: Number(body.banos || body.bathrooms),
+      garages: Number(body.garajes || body.garages),
     };
+
+    // Validar que neighborhood sea un string no vacío
+    if (!payload.neighborhood || payload.neighborhood === "null" || payload.neighborhood === "undefined") {
+      logger.warning(`⚠️  Neighborhood vacío o inválido. Barrio original: "${barrio}"`);
+      payload.neighborhood = barrio || ""; // Usar barrio original si el mapeo falla
+    }
+
+    logger.debug("📦 Payload mapeado para Lambda:", JSON.stringify(payload, null, 2));
+    logger.debug(`📦 Tipo de neighborhood en payload: ${typeof payload.neighborhood}`);
+    
+    return payload;
   }
 
   /**
    * Mapea nombres de barrios al formato esperado por el modelo
    */
-  private mapNeighborhood(barrio: string): string | null {
-    if (!barrio) return null;
+  private mapNeighborhood(barrio: string): string {
+    if (!barrio) {
+      logger.warning("⚠️  Barrio vacío recibido en mapNeighborhood");
+      return "";
+    }
 
     const normalized = barrio.toLowerCase().trim();
 
     const mapping: { [key: string]: string } = {
-      "palermo": "Palermo",
-      "palermo soho": "Palermo",
-      "palermo hollywood": "Palermo",
+      // Zona Norte
       "belgrano": "Belgrano",
-      "recoleta": "Recoleta",
-      "caballito": "Caballito",
-      "villa crespo": "Villa Crespo",
       "colegiales": "Colegiales",
       "nunez": "Núñez",
       "núñez": "Núñez",
-      "puerto madero": "Puerto Madero",
-      "san telmo": "San Telmo",
-      "monserrat": "Monserrat",
-      "retiro": "Retiro",
-      "barrio norte": "Barrio Norte",
-      "almagro": "Almagro",
-      "boedo": "Boedo",
-      "flores": "Flores",
-      "parque patricios": "Parque Patricios",
-      "villa urquiza": "Villa Urquiza",
       "saavedra": "Saavedra",
+      "villa urquiza": "Villa Urquiza",
+      
+      // Zona Centro
+      "palermo": "Palermo",
+      "palermo soho": "Palermo",
+      "palermo hollywood": "Palermo",
+      "recoleta": "Recoleta",
+      "retiro": "Retiro",
+      "puerto madero": "Puerto Madero",
+      "barrio norte": "Barrio Norte",
+      
+      // Microcentro
+      "san nicolas": "San Nicolas",
+      "san nicolás": "San Nicolas",
+      "monserrat": "Monserrat",
+      "montserrat": "Monserrat", // Variante ortográfica
+      
+      // Zona Sur
+      "san telmo": "San Telmo",
+      "boedo": "Boedo",
+      "parque patricios": "Parque Patricios",
+      
+      // Zona Oeste
+      "almagro": "Almagro",
+      "balvanera": "Balvanera",
+      "caballito": "Caballito",
+      "villa crespo": "Villa Crespo",
+      "flores": "Flores",
       "villa devoto": "Villa Devoto",
+      "devoto": "Villa Devoto", // Alias sin "Villa"
       "villa del parque": "Villa del Parque",
     };
 
-    return mapping[normalized] || null;
+    const mapped = mapping[normalized];
+    
+    if (!mapped) {
+      logger.warning(`⚠️  Barrio "${barrio}" no encontrado en mapeo. Usando valor original.`);
+      // Si no se encuentra en el mapeo, capitalizar el original
+      return barrio.charAt(0).toUpperCase() + barrio.slice(1).toLowerCase();
+    }
+    
+    return mapped;
   }
 
   /**
