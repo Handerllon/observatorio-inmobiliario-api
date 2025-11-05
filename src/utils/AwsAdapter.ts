@@ -239,14 +239,15 @@ export class AwsAdapter {
     logger.debug(`🏘️  Barrio mapeado: "${mappedNeighborhood}" (tipo: ${typeof mappedNeighborhood})`);
 
     // Construir payload con validación de tipos
+    // IMPORTANTE: Usar ?? (nullish coalescing) en lugar de || para valores que pueden ser 0
     const payload = {
-      total_area: Number(body.total_area || body.metrosCuadrados || body.surface_total),
-      rooms: Number(body.ambientes || body.rooms),
-      bedrooms: Number(body.dormitorios || body.bedrooms),
-      antiquity: Number(body.antiguedad || body.antiquity || body.age),
+      total_area: this.toInteger(body.total_area ?? body.metrosCuadrados ?? body.surface_total),
+      rooms: this.toInteger(body.ambientes ?? body.rooms),
+      bedrooms: this.toInteger(body.dormitorios ?? body.bedrooms),
+      antiquity: this.toInteger(body.antiguedad ?? body.antiquity ?? body.age),
       neighborhood: String(mappedNeighborhood), // Asegurar que siempre sea string
-      bathrooms: Number(body.banos || body.bathrooms),
-      garages: Number(body.garajes || body.garages),
+      bathrooms: this.toInteger(body.banos ?? body.bathrooms),
+      garages: this.toInteger(body.garajes ?? body.garages),
     };
 
     // Validar que neighborhood sea un string no vacío
@@ -255,10 +256,50 @@ export class AwsAdapter {
       payload.neighborhood = barrio || ""; // Usar barrio original si el mapeo falla
     }
 
+    // Validar que todos los campos numéricos sean enteros válidos
+    this.validateNumericFields(payload);
+
     logger.debug("📦 Payload mapeado para Lambda:", JSON.stringify(payload, null, 2));
-    logger.debug(`📦 Tipo de neighborhood en payload: ${typeof payload.neighborhood}`);
     
     return payload;
+  }
+
+  /**
+   * Convierte un valor a entero, manejando casos especiales
+   */
+  private toInteger(value: any): number {
+    if (value === null || value === undefined) {
+      logger.warning(`⚠️  Valor null/undefined en campo numérico, usando 0`);
+      return 0;
+    }
+    
+    const num = Number(value);
+    
+    if (isNaN(num)) {
+      logger.warning(`⚠️  Valor no numérico: "${value}", usando 0`);
+      return 0;
+    }
+    
+    // Convertir a entero (redondear hacia abajo)
+    return Math.floor(num);
+  }
+
+  /**
+   * Valida que todos los campos numéricos sean enteros válidos
+   */
+  private validateNumericFields(payload: any): void {
+    const numericFields = ['total_area', 'rooms', 'bedrooms', 'antiquity', 'bathrooms', 'garages'];
+    
+    for (const field of numericFields) {
+      const value = payload[field];
+      
+      if (typeof value !== 'number' || isNaN(value)) {
+        logger.error(`❌ Campo "${field}" no es un número válido: ${value} (tipo: ${typeof value})`);
+        throw new Error(`Campo "${field}" debe ser un número entero válido`);
+      }
+      
+      logger.debug(`✅ Campo "${field}": ${value} (tipo: ${typeof value})`);
+    }
   }
 
   /**
