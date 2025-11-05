@@ -24,7 +24,7 @@ export class AwsAdapter {
     const region = process.env.AWS_REGION || "us-east-1";
     const credentials = {
       accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
-      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY_ID || "",
+      secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
     };
 
     // Configurar clientes AWS
@@ -48,7 +48,7 @@ export class AwsAdapter {
     const required = [
       "AWS_REGION",
       "AWS_ACCESS_KEY_ID",
-      "AWS_SECRET_ACCESS_KEY_ID",
+      "AWS_SECRET_ACCESS_KEY",
       "LAMBDA_PREDICTION_FUNCTION_NAME",
       "BUCKET_NAME",
     ];

@@ -73,8 +73,21 @@ export class CognitoService {
       );
     }
 
+    // Validar credenciales de AWS para operaciones administrativas
+    if (!process.env.AWS_ACCESS_KEY_ID || !process.env.AWS_SECRET_ACCESS_KEY) {
+      logger.warning(
+        "AWS_ACCESS_KEY_ID y AWS_SECRET_ACCESS_KEY no están configuradas. " +
+        "Las operaciones administrativas de Cognito (actualizar perfil, listar usuarios, etc.) fallarán."
+      );
+    }
+
+    // Configurar cliente con credenciales explícitas
     this.client = new CognitoIdentityProviderClient({
       region: this.config.region,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID || "",
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY || "",
+      },
     });
 
     this.userPool = new CognitoUserPool({
