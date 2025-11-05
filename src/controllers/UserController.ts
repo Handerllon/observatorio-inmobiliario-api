@@ -80,18 +80,32 @@ export class UserController {
         });
       }
 
+      // Consultar a Cognito directamente para obtener los datos más recientes
+      // (no depender del token que puede tener información desactualizada)
+      const cognitoUser = await UserController.cognitoService.adminGetUser(user.username);
+      
+      if (!cognitoUser.success) {
+        return res.status(500).json({
+          success: false,
+          message: "Error al obtener información del usuario"
+        });
+      }
+
+      // Extraer atributos del usuario
+      const attributes = cognitoUser.data?.attributes || {};
+      
       res.status(200).json({
         success: true,
         message: "Perfil obtenido exitosamente",
         user: {
-          id: user.sub,
-          email: user.email,
-          firstName: user.given_name,
-          lastName: user.family_name,
-          username: user.username,
-          groups: user.groups,
-          emailVerified: user.email_verified,
-          userType: user.user_type
+          id: attributes.sub || user.sub,
+          email: attributes.email || user.email,
+          firstName: attributes.given_name,
+          lastName: attributes.family_name,
+          username: cognitoUser.data?.username || user.username,
+          groups: user.groups, // Los grupos siguen viniendo del token ya que requieren permisos especiales
+          emailVerified: attributes.email_verified === "true",
+          userType: attributes["custom:user_type"]
         }
       });
 
@@ -340,18 +354,38 @@ export class UserController {
       // Si llegamos aquí, el token es válido (pasó por el middleware de autenticación de Cognito)
       const user = req.user;
       
+      if (!user) {
+        return res.status(401).json({
+          success: false,
+          message: "Usuario no autenticado"
+        });
+      }
+
+      // Consultar a Cognito directamente para obtener los datos más recientes
+      const cognitoUser = await UserController.cognitoService.adminGetUser(user.username);
+      
+      if (!cognitoUser.success) {
+        return res.status(500).json({
+          success: false,
+          message: "Error al obtener información del usuario"
+        });
+      }
+
+      // Extraer atributos del usuario
+      const attributes = cognitoUser.data?.attributes || {};
+      
       res.status(200).json({
         success: true,
         message: "Token válido",
         user: {
-          id: user?.sub,
-          email: user?.email,
-          firstName: user?.given_name,
-          lastName: user?.family_name,
-          username: user?.username,
-          groups: user?.groups,
-          emailVerified: user?.email_verified,
-          userType: user?.user_type
+          id: attributes.sub || user.sub,
+          email: attributes.email || user.email,
+          firstName: attributes.given_name,
+          lastName: attributes.family_name,
+          username: cognitoUser.data?.username || user.username,
+          groups: user.groups,
+          emailVerified: attributes.email_verified === "true",
+          userType: attributes["custom:user_type"]
         }
       });
 
