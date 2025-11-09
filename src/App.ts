@@ -9,6 +9,7 @@ import "reflect-metadata";
 import { RentRouter } from "./routes/RentRouter";
 import { UserRouter } from "./routes/UserRouter";
 import { RentPredictionRouter } from "./routes/RentPredictionRouter";
+import { MarketTrendsRouter } from "./routes/MarketTrendsRouter";
 import { logger } from "./utils/Logger";
 
 
@@ -55,6 +56,7 @@ class App {
     new RentRouter().routes(this.router);
     new UserRouter().routes(this.router);
     new RentPredictionRouter().routes(this.router);
+    new MarketTrendsRouter().routes(this.router);
   }
 
   private initializeDatabase() {
