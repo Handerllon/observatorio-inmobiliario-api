@@ -590,6 +590,73 @@ export class AwsAdapter {
   }
 
   /**
+   * Obtiene las tendencias de mercado de un barrio desde S3
+   * reporting/trends/<MM_AAAA>/<BARRIO>/market_trends.json
+   */
+  async getMarketTrends(barrio: string): Promise<any | null> {
+    try {
+      if (!this.bucketName) {
+        logger.warning("⚠️  BUCKET_NAME no está configurado, no se pueden obtener tendencias");
+        return null;
+      }
+
+      if (!barrio) {
+        logger.warning("⚠️  No se proporcionó nombre de barrio, no se pueden obtener tendencias");
+        return null;
+      }
+
+      // Obtener fecha actual en formato MM_YYYY
+      const now = new Date();
+      const month = String(now.getMonth() + 1).padStart(2, '0');
+      const year = now.getFullYear();
+      const dateFolder = `${month}_${year}`;
+
+      // Normalizar nombre del barrio
+      const normalizedBarrio = this.normalizeBarrioName(barrio);
+
+      // Construir path completo al archivo market_trends.json
+      const key = `reporting/trends/${dateFolder}/${normalizedBarrio}/market_trends.json`;
+
+      logger.debug(`📈 Buscando tendencias de mercado en S3: s3://${this.bucketName}/${key}`);
+
+      // Obtener el objeto desde S3
+      const command = new GetObjectCommand({
+        Bucket: this.bucketName,
+        Key: key,
+      });
+
+      const response = await this.s3Client.send(command);
+
+      // Leer el contenido del archivo
+      if (!response.Body) {
+        logger.debug(`📭 No se encontró el archivo de tendencias: ${key}`);
+        return null;
+      }
+
+      // Convertir stream a string
+      const bodyString = await response.Body.transformToString();
+      
+      // Parsear JSON
+      const trends = JSON.parse(bodyString);
+
+      logger.debug(`✅ Tendencias de mercado obtenidas exitosamente para ${barrio}`);
+      logger.debug(`📊 Tendencias:`, JSON.stringify(trends, null, 2));
+
+      return trends;
+
+    } catch (error: any) {
+      // Si el archivo no existe (NoSuchKey), no es un error crítico
+      if (error.name === 'NoSuchKey' || error.Code === 'NoSuchKey') {
+        logger.debug(`📭 Archivo de tendencias no encontrado para ${barrio} (esto es normal si no hay datos)`);
+        return null;
+      }
+
+      logger.error("❌ Error obteniendo tendencias de S3:", error);
+      return null;
+    }
+  }
+
+  /**
    * Mapea nombres de archivos a las keys del objeto de imágenes
    */
   private mapFileNameToKey(fileName: string): string | null {

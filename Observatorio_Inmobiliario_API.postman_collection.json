@@ -1448,6 +1448,66 @@
 				}
 			],
 			"description": "Endpoints para gestión de rentas y predicciones"
+		},
+		{
+			"name": "Market Trends",
+			"item": [
+				{
+					"name": "Get Market Trends by Barrio",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200 or 404', function () {",
+									"    pm.expect([200, 404]).to.include(pm.response.code);",
+									"});",
+									"",
+									"if (pm.response.code === 200) {",
+									"    pm.test('Response contains market trends data', function () {",
+									"        const responseJson = pm.response.json();",
+									"        pm.expect(responseJson.success).to.be.true;",
+									"        pm.expect(responseJson.data).to.not.be.undefined;",
+									"        pm.expect(responseJson.barrio).to.not.be.undefined;",
+									"    });",
+									"",
+									"    pm.test('Market trends data is an object', function () {",
+									"        const responseJson = pm.response.json();",
+									"        pm.expect(responseJson.data).to.be.an('object');",
+									"    });",
+									"}",
+									"",
+									"if (pm.response.code === 404) {",
+									"    pm.test('404 response has proper message', function () {",
+									"        const responseJson = pm.response.json();",
+									"        pm.expect(responseJson.success).to.be.false;",
+									"        pm.expect(responseJson.message).to.include('No se encontraron');",
+									"    });",
+									"}"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{base_url}}/market-trends/Palermo",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"market-trends",
+								"Palermo"
+							]
+						},
+						"description": "Obtiene las tendencias de mercado para un barrio específico.\n\n**Endpoint público** - No requiere autenticación\n\n**Path Parameters:**\n- `barrio`: Nombre del barrio (case-insensitive)\n\n**Barrios disponibles:**\n- Almagro, Balvanera, Belgrano, Caballito, Colegiales, Devoto\n- Flores, Monserrat, Núñez, Palermo, Parque Patricios, Puerto Madero\n- Recoleta, Retiro, San Nicolas, San Telmo, Villa Crespo\n- Villa del Parque, Villa Urquiza\n\n**Fuente de datos:** S3 Bucket\n- Path: `reporting/trends/<MM_YYYY>/<BARRIO>/market_trends.json`\n- Se obtienen automáticamente los datos del mes actual\n\n**Respuestas:**\n- `200 OK`: Tendencias encontradas\n- `404 Not Found`: No hay tendencias para el barrio (archivo no existe en S3)\n- `400 Bad Request`: Falta el parámetro barrio\n- `500 Internal Server Error`: Error del servidor"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para obtener tendencias e indicadores del mercado inmobiliario por barrio.\n\n**Características:**\n- Datos mensuales actualizados automáticamente\n- Información almacenada en S3\n- Acceso público (sin autenticación requerida)\n- Datos específicos por barrio de Buenos Aires"
 		}
 	],
 	"event": [
