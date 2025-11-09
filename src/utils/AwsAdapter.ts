@@ -592,6 +592,9 @@ export class AwsAdapter {
   /**
    * Obtiene las tendencias de mercado de un barrio desde S3
    * reporting/trends/<MM_AAAA>/<BARRIO>/market_trends.json
+   * 
+   * Nota: Los archivos de tendencias usan espacios en los nombres de barrio,
+   * a diferencia de métricas e imágenes que usan guiones bajos.
    */
   async getMarketTrends(barrio: string): Promise<any | null> {
     try {
@@ -611,8 +614,12 @@ export class AwsAdapter {
       const year = now.getFullYear();
       const dateFolder = `${month}_${year}`;
 
-      // Normalizar nombre del barrio
-      const normalizedBarrio = this.normalizeBarrioName(barrio);
+      // Para tendencias, usar normalización con ESPACIOS (no guiones bajos)
+      // Esto es diferente a métricas e imágenes
+      const normalizedBarrio = this.normalizeBarrioNameWithSpaces(barrio);
+      
+      logger.debug(`🏘️  Barrio recibido: "${barrio}"`);
+      logger.debug(`🏘️  Barrio normalizado (con espacios): "${normalizedBarrio}"`);
 
       // Construir path completo al archivo market_trends.json
       const key = `reporting/trends/${dateFolder}/${normalizedBarrio}/market_trends.json`;
@@ -740,7 +747,9 @@ export class AwsAdapter {
   // ==================== UTILITY METHODS ====================
 
   /**
-   * Normaliza el nombre del barrio para usarlo como nombre de carpeta
+   * Normaliza el nombre del barrio para usar en paths de S3
+   * Convierte espacios a guiones bajos (_)
+   * Usado para: imágenes y métricas
    * Ejemplo: "Palermo Soho" → "PALERMO_SOHO"
    */
   private normalizeBarrioName(barrio: string): string {
@@ -750,6 +759,19 @@ export class AwsAdapter {
       .toUpperCase()
       .replace(/\s+/g, "_")
       .replace(/[^A-Z0-9_]/g, "");
+  }
+
+  /**
+   * Normaliza el nombre del barrio manteniendo espacios
+   * Usado para: tendencias de mercado
+   */
+  private normalizeBarrioNameWithSpaces(barrio: string): string {
+    return barrio
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toUpperCase()
+      .trim()
+      .replace(/\s+/g, " "); // Mantener espacios simples
   }
 
   /**

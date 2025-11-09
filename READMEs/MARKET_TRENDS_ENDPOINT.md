@@ -99,14 +99,21 @@ reporting/trends/11_2025/PALERMO/market_trends.json
 
 Los nombres de barrios se normalizan automáticamente:
 - Se convierten a mayúsculas
-- Se eliminan espacios extra
 - Se eliminan acentos
+- **Los espacios se MANTIENEN** (a diferencia de métricas e imágenes)
+
+**⚠️ IMPORTANTE:** Los archivos de tendencias en S3 usan **espacios** en los nombres de carpeta, no guiones bajos.
 
 **Ejemplos de normalización:**
 - `"Palermo"` → `"PALERMO"`
-- `"villa crespo"` → `"VILLA CRESPO"`
+- `"villa crespo"` → `"VILLA CRESPO"` (mantiene espacio)
 - `"Núñez"` → `"NUNEZ"`
-- `"san telmo"` → `"SAN TELMO"`
+- `"san telmo"` → `"SAN TELMO"` (mantiene espacio)
+- `"PARQUE PATRICIOS"` → `"PARQUE PATRICIOS"` (mantiene espacios)
+
+**Diferencia con otros endpoints:**
+- 📊 **Métricas e imágenes:** usan guiones bajos → `VILLA_CRESPO`
+- 📈 **Tendencias:** usan espacios → `VILLA CRESPO`
 
 ## Ejemplos de Uso
 
@@ -124,6 +131,16 @@ curl http://localhost:9000/market-trends/BELGRANO
 curl http://localhost:9000/market-trends/belgrano
 curl http://localhost:9000/market-trends/Belgrano
 # Todos funcionan igual ✅
+
+# Barrios con espacios (URL encoded)
+curl "http://localhost:9000/market-trends/Villa%20Crespo"
+curl "http://localhost:9000/market-trends/San%20Telmo"
+curl "http://localhost:9000/market-trends/Puerto%20Madero"
+curl "http://localhost:9000/market-trends/Parque%20Patricios"
+
+# Barrios con espacios (usando comillas)
+curl "http://localhost:9000/market-trends/Villa Crespo"
+curl "http://localhost:9000/market-trends/San Nicolas"
 ```
 
 ### Con JavaScript (fetch)
@@ -140,6 +157,21 @@ fetch('http://localhost:9000/market-trends/Palermo')
     }
   })
   .catch(error => console.error('Error:', error));
+
+// Barrios con espacios - usar encodeURIComponent
+const barrio = 'Villa Crespo';
+fetch(`http://localhost:9000/market-trends/${encodeURIComponent(barrio)}`)
+  .then(response => response.json())
+  .then(data => console.log(data));
+
+// Múltiples barrios en paralelo
+const barrios = ['Palermo', 'Villa Crespo', 'San Telmo', 'Puerto Madero'];
+Promise.all(
+  barrios.map(b => 
+    fetch(`http://localhost:9000/market-trends/${encodeURIComponent(b)}`)
+      .then(r => r.json())
+  )
+).then(results => console.log('Todas las tendencias:', results));
 ```
 
 ### Con Postman
@@ -228,9 +260,25 @@ El endpoint genera logs detallados para debugging:
 | Aspecto | Métricas (`/metrics`) | Tendencias (`/market-trends`) |
 |---------|----------------------|------------------------------|
 | **Path en S3** | `reporting/metrics/<MM_YYYY>/<BARRIO>/metrics.json` | `reporting/trends/<MM_YYYY>/<BARRIO>/market_trends.json` |
+| **Normalización de barrio** | Con guiones bajos: `VILLA_CRESPO` | Con espacios: `VILLA CRESPO` |
 | **Uso** | Datos incluidos en predicciones | Endpoint independiente |
 | **Autenticación** | N/A (usado internamente) | Público (no requiere) |
 | **Propósito** | Métricas actuales del barrio | Tendencias e indicadores de mercado |
+
+### ⚠️ Diferencia Clave: Normalización de Nombres
+
+**Métricas e Imágenes:**
+```
+reporting/metrics/11_2025/VILLA_CRESPO/metrics.json
+reporting/report_pictures/11_2025/VILLA_CRESPO/price_evolution.png
+```
+
+**Tendencias:**
+```
+reporting/trends/11_2025/VILLA CRESPO/market_trends.json
+```
+
+Nota el espacio vs guión bajo (`VILLA CRESPO` vs `VILLA_CRESPO`).
 
 ## Testing
 
@@ -283,10 +331,22 @@ GET /market-trends/
 Expected: 404 Not Found (ruta no existe) ✅
 ```
 
-**Test 5: Barrio con Espacios**
+**Test 5: Barrios con Espacios**
 ```bash
 GET /market-trends/Villa%20Crespo
+GET /market-trends/San%20Telmo
+GET /market-trends/Puerto%20Madero
+GET /market-trends/Parque%20Patricios
+GET /market-trends/Villa%20Urquiza
+GET /market-trends/Villa%20del%20Parque
+GET /market-trends/San%20Nicolas
 Expected: 200 OK o 404 (dependiendo de datos) ✅
+```
+
+**Test 6: Normalización de Acentos**
+```bash
+GET /market-trends/Núñez
+Expected: Busca en "NUNEZ" (sin acento) ✅
 ```
 
 ## Mantenimiento
@@ -353,8 +413,32 @@ router.get('/market-trends/:barrio', trendsLimiter, controller.getTrendsByBarrio
 **Soluciones:**
 1. Verificar que el archivo esté en S3: `reporting/trends/<MM_YYYY>/<BARRIO>/market_trends.json`
 2. Verificar el formato de fecha (MM_YYYY)
-3. Verificar la normalización del nombre del barrio (mayúsculas, sin acentos)
+3. Verificar la normalización del nombre del barrio:
+   - Mayúsculas: `PALERMO`, `VILLA CRESPO`
+   - Sin acentos: `NUNEZ` (no `NÚÑEZ`)
+   - **CON espacios:** `VILLA CRESPO` (no `VILLA_CRESPO`)
 4. Generar el archivo si falta
+
+### Error 404 para barrios con espacios
+
+**Causa:** Los archivos en S3 usan **espacios** en los nombres de carpeta
+
+**⚠️ IMPORTANTE:** Asegúrate de que los archivos en S3 estén nombrados correctamente:
+
+**✅ Correcto (con espacios):**
+```
+reporting/trends/11_2025/VILLA CRESPO/market_trends.json
+reporting/trends/11_2025/SAN TELMO/market_trends.json
+reporting/trends/11_2025/PUERTO MADERO/market_trends.json
+```
+
+**❌ Incorrecto (con guiones bajos):**
+```
+reporting/trends/11_2025/VILLA_CRESPO/market_trends.json
+reporting/trends/11_2025/SAN_TELMO/market_trends.json
+```
+
+**Nota:** Esto es diferente a métricas e imágenes que SÍ usan guiones bajos.
 
 ### Error: "BUCKET_NAME no está configurado"
 
