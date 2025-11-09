@@ -1,10 +1,16 @@
 import * as express from "express";
 import * as cors from "cors";
 import * as dotenv from "dotenv";
+import { DataSource } from "typeorm";
+import { AppDataSource } from "./DataSource";
 import bodyParser = require("body-parser");
 import path = require("path");
 import "reflect-metadata";
 import { RentRouter } from "./routes/RentRouter";
+import { UserRouter } from "./routes/UserRouter";
+import { RentPredictionRouter } from "./routes/RentPredictionRouter";
+import { logger } from "./utils/Logger";
+
 
 class App {
   public app: express.Application;
@@ -37,8 +43,8 @@ class App {
         res: express.Response,
         next: express.NextFunction
       ) => {
-        console.log(
-          `Received ${req.method} request from ${req.ip} to ${req.originalUrl}`
+        logger.info(
+          `📥 ${req.method} ${req.originalUrl} - IP: ${req.ip}`
         );
         next(); // Continue processing the request
       }
@@ -47,6 +53,14 @@ class App {
     this.app.use(cors());
 
     new RentRouter().routes(this.router);
+    new UserRouter().routes(this.router);
+    new RentPredictionRouter().routes(this.router);
+  }
+
+  private initializeDatabase() {
+    // initialize database
+    const PostgresDataSource: DataSource = AppDataSource;
+    PostgresDataSource.initialize();
   }
 
   public listen(): void {

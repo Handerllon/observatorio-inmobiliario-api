@@ -1,0 +1,1528 @@
+{
+	"info": {
+		"_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+		"name": "Observatorio Inmobiliario API - AWS Cognito",
+		"description": "Colección completa para la API del Observatorio Inmobiliario.\n\n**Autenticación:** AWS Cognito User Pool (todos los usuarios se gestionan en Cognito)\n**Predicciones:** AWS Lambda para ML + S3 para imágenes/métricas + Overpass API para lugares cercanos\n**Base de datos:** PostgreSQL para historial de predicciones (usa cognitoSub como referencia)\n\n**Notas importantes:**\n- No hay entidad User local - toda la gestión de usuarios se hace en Cognito\n- Los endpoints de admin requieren pertenecer al grupo 'admin' en Cognito\n- El listado de usuarios soporta paginación (limit y paginationToken)\n- Las predicciones se guardan automáticamente si el usuario está autenticado",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "12345678"
+	},
+	"item": [
+		{
+			"name": "Authentication",
+			"item": [
+				{
+					"name": "Register User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 201) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.data && responseJson.data.userSub) {",
+									"        pm.environment.set('user_sub', responseJson.data.userSub);",
+									"    }",
+									"}",
+									"",
+									"pm.test('Status code is 201', function () {",
+									"    pm.response.to.have.status(201);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('User needs email confirmation', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include('verifica tu email');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Juan\",\n    \"lastName\": \"Pérez\",\n    \"email\": \"juan.perez@example.com\",\n    \"password\": \"Password123!\",\n    \"userType\": \"Propietario\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/register",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"register"
+							]
+						},
+						"description": "Registra un nuevo usuario en AWS Cognito. Requiere confirmación de email posterior."
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Registration",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('Email verified successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include('verificado');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"juan.perez@example.com\",\n    \"confirmationCode\": \"123456\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/confirm",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"confirm"
+							]
+						},
+						"description": "Confirma el registro del usuario con el código enviado por email."
+					},
+					"response": []
+				},
+				{
+					"name": "Login User",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.accessToken) {",
+									"        pm.environment.set('access_token', responseJson.accessToken);",
+									"        pm.environment.set('id_token', responseJson.idToken);",
+									"        pm.environment.set('refresh_token', responseJson.refreshToken);",
+									"    }",
+									"    if (responseJson.data && responseJson.data.payload) {",
+									"        pm.environment.set('user_sub', responseJson.data.payload.sub);",
+									"        pm.environment.set('user_email', responseJson.data.payload.email);",
+									"    }",
+									"}",
+									"",
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('Response contains Cognito tokens', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.accessToken).to.not.be.undefined;",
+									"    pm.expect(responseJson.idToken).to.not.be.undefined;",
+									"    pm.expect(responseJson.refreshToken).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"juan.perez@example.com\",\n    \"password\": \"Password123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/login",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"login"
+							]
+						},
+						"description": "Inicia sesión con AWS Cognito. Retorna accessToken, idToken y refreshToken."
+					},
+					"response": []
+				},
+				{
+					"name": "Forgot Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('Verification code sent', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include('código de verificación');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"juan.perez@example.com\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/forgot-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"forgot-password"
+							]
+						},
+						"description": "Inicia el proceso de recuperación de contraseña. Envía un código por email."
+					},
+					"response": []
+				},
+				{
+					"name": "Confirm Forgot Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response has success true', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});",
+									"",
+									"pm.test('Password reset successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.message).to.include('restablecida');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"email\": \"juan.perez@example.com\",\n    \"confirmationCode\": \"123456\",\n    \"newPassword\": \"NewPassword123!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/confirm-forgot-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"confirm-forgot-password"
+							]
+						},
+						"description": "Confirma la nueva contraseña con el código de verificación recibido por email."
+					},
+					"response": []
+				},
+				{
+					"name": "Validate Token",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Token is valid', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.message).to.include('Token válido');",
+									"});",
+									"",
+									"pm.test('Response contains complete and up-to-date user info from Cognito', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.user).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.email).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.email).to.not.be.empty;",
+									"    pm.expect(responseJson.user.firstName).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.lastName).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text",
+								"description": "⚠️ IMPORTANTE: Usar ID Token para obtener el perfil completo del usuario"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/validate-token",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"validate-token"
+							]
+						},
+						"description": "Valida el ID token de AWS Cognito y retorna información completa del usuario.\n\n⚠️ **IMPORTANTE:** Este endpoint requiere el **ID Token** (no el Access Token).\n\n**Funcionamiento:**\n- Valida que el ID Token sea válido\n- Consulta directamente a Cognito para obtener los datos MÁS RECIENTES del usuario\n- Devuelve información actualizada del perfil\n\n**Uso típico:**\n- Verificar que el usuario está autenticado\n- Obtener información actualizada del perfil sin hacer logout/login\n- Refrescar la sesión del usuario en el frontend\n\n**Nota:** Los cambios de perfil se reflejan inmediatamente al llamar a este endpoint."
+					},
+					"response": []
+				},
+				{
+					"name": "Logout",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    pm.environment.unset('access_token');",
+									"    pm.environment.unset('id_token');",
+									"    pm.environment.unset('refresh_token');",
+									"}",
+									"",
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Logout successful', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.message).to.include('cerrada');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/logout",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"logout"
+							]
+						},
+						"description": "Cierra la sesión del usuario en todos los dispositivos (global sign out)."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para autenticación de usuarios con AWS Cognito"
+		},
+		{
+			"name": "User Profile Management",
+			"item": [
+				{
+					"name": "Get Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains user data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.user).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.email).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.id).to.not.be.undefined;",
+									"});",
+									"",
+									"pm.test('User has complete profile attributes from Cognito (always up-to-date)', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.user.username).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.email).to.not.be.empty;",
+									"    pm.expect(responseJson.user.firstName).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.lastName).to.not.be.undefined;",
+									"    pm.expect(responseJson.user.groups).to.be.an('array');",
+									"});",
+									"",
+									"pm.test('User type is present if set', function () {",
+									"    const responseJson = pm.response.json();",
+									"    // userType puede ser undefined si no se estableció durante el registro",
+									"    if (responseJson.user.userType) {",
+									"        pm.expect(['Propietario', 'Agente', 'Inquilino']).to.include(responseJson.user.userType);",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text",
+								"description": "⚠️ IMPORTANTE: Usar ID Token (no Access Token) para obtener todos los atributos del perfil"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"profile"
+							]
+						},
+						"description": "Obtiene el perfil completo del usuario autenticado desde AWS Cognito.\n\n⚠️ **IMPORTANTE:** Este endpoint requiere el **ID Token** (no el Access Token).\n\n**¿Por qué ID Token?**\n- El ID Token se usa para autenticar al usuario\n- El endpoint consulta directamente a Cognito para obtener los datos MÁS RECIENTES\n- Esto garantiza que los cambios de perfil se reflejen inmediatamente (sin necesidad de hacer logout/login)\n\n**Respuesta incluye (datos actualizados desde Cognito):**\n- id (sub de Cognito)\n- email\n- firstName (given_name)\n- lastName (family_name)\n- username\n- groups (roles)\n- emailVerified\n- userType (custom:user_type)\n\n**Nota:** Los cambios realizados con `PUT /users/profile` se reflejan inmediatamente al llamar a este endpoint."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Profile",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Profile updated successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.message).to.include('actualizado');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text",
+								"description": "⚠️ IMPORTANTE: Usar ID Token para obtener el perfil completo del usuario"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Juan Carlos\",\n    \"lastName\": \"Pérez González\",\n    \"email\": \"juancarlos@example.com\",\n    \"userType\": \"Agente\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/profile",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"profile"
+							]
+						},
+						"description": "Actualiza el perfil del usuario autenticado en AWS Cognito.\n\n⚠️ **IMPORTANTE:** Este endpoint requiere el **ID Token** (no el Access Token).\n\n**Campos actualizables:**\n- firstName (actualiza given_name en Cognito)\n- lastName (actualiza family_name en Cognito)\n- email (actualiza email en Cognito, puede requerir verificación)\n- userType (actualiza custom:user_type en Cognito)"
+					},
+					"response": []
+				},
+				{
+					"name": "Change Password",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Password changed successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.message).to.include('actualizada');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"oldPassword\": \"Password123!\",\n    \"newPassword\": \"NewPassword456!\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/change-password",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"change-password"
+							]
+						},
+						"description": "Cambia la contraseña del usuario autenticado en AWS Cognito."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión del perfil del usuario autenticado"
+		},
+		{
+			"name": "User Administration",
+			"item": [
+				{
+					"name": "Get All Users (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    // Guardar paginationToken si existe para usar en siguiente página",
+									"    if (responseJson.paginationToken) {",
+									"        pm.environment.set('pagination_token', responseJson.paginationToken);",
+									"    } else {",
+									"        pm.environment.unset('pagination_token');",
+									"    }",
+									"}",
+									"",
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains users array', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.users).to.be.an('array');",
+									"    pm.expect(responseJson.total).to.be.a('number');",
+									"});",
+									"",
+									"pm.test('Users have Cognito attributes', function () {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.users.length > 0) {",
+									"        const user = responseJson.users[0];",
+									"        pm.expect(user.username).to.not.be.undefined;",
+									"        pm.expect(user.sub).to.not.be.undefined;",
+									"        pm.expect(user.email).to.not.be.undefined;",
+									"        pm.expect(user.enabled).to.be.a('boolean');",
+									"        pm.expect(user.userStatus).to.not.be.undefined;",
+									"    }",
+									"});",
+									"",
+									"pm.test('Response includes pagination info', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.hasMore).to.be.a('boolean');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users?limit=60",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "60",
+									"description": "Número de usuarios por página (default: 60, max: 60)"
+								},
+								{
+									"key": "paginationToken",
+									"value": "",
+									"description": "Token para la siguiente página (obtenido de respuesta anterior)",
+									"disabled": true
+								}
+							]
+						},
+						"description": "Lista todos los usuarios desde AWS Cognito User Pool (requiere grupo admin). Soporta paginación con limit y paginationToken. Retorna información completa de cada usuario incluyendo sub, email, firstName, lastName, userType, enabled, userStatus y timestamps."
+					},
+					"response": []
+				},
+				{
+					"name": "Get All Users - Next Page (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains next page of users', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.users).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users?limit=60&paginationToken={{pagination_token}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "60",
+									"description": "Número de usuarios por página"
+								},
+								{
+									"key": "paginationToken",
+									"value": "{{pagination_token}}",
+									"description": "Token obtenido de la respuesta anterior"
+								}
+							]
+						},
+						"description": "Obtiene la siguiente página de usuarios usando el paginationToken de la respuesta anterior. Ejemplo de paginación en Cognito."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User By Username (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains user data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.user).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/{{username}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{username}}"
+							]
+						},
+						"description": "Obtiene un usuario por su username desde AWS Cognito (requiere grupo admin)."
+					},
+					"response": []
+				},
+				{
+					"name": "Update User By Username (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('User updated successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"firstName\": \"Nombre Actualizado\",\n    \"lastName\": \"Apellido Actualizado\",\n    \"email\": \"nuevo@example.com\",\n    \"userType\": \"Inquilino\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/users/{{username}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{username}}"
+							]
+						},
+						"description": "Actualiza atributos de un usuario en AWS Cognito (requiere grupo admin)."
+					},
+					"response": []
+				},
+				{
+					"name": "Disable User (Admin)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('User disabled successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.message).to.include('deshabilitado');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{access_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/users/{{username}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"users",
+								"{{username}}"
+							]
+						},
+						"description": "Deshabilita un usuario en AWS Cognito (requiere grupo admin). No elimina permanentemente."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints de administración de usuarios (requieren grupo 'admin' de Cognito).\n\n**Importante:** Todos los endpoints listan, obtienen y modifican usuarios directamente en AWS Cognito User Pool. No hay base de datos local de usuarios.\n\n**Paginación:** El endpoint GET /users soporta paginación con query params 'limit' (max 60) y 'paginationToken' (obtenido de respuesta anterior)."
+		},
+		{
+			"name": "Prediction History",
+			"item": [
+				{
+					"name": "Get User Predictions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains predictions array', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.predictions).to.be.an('array');",
+									"    pm.expect(responseJson.total).to.be.a('number');",
+									"});",
+									"",
+									"pm.test('Predictions have required fields', function () {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.predictions.length > 0) {",
+									"        const prediction = responseJson.predictions[0];",
+									"        pm.expect(prediction.id).to.not.be.undefined;",
+									"        pm.expect(prediction.status).to.not.be.undefined;",
+									"        pm.expect(prediction.createdAt).to.not.be.undefined;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions"
+							]
+						},
+						"description": "Obtiene todas las predicciones del usuario autenticado, ordenadas por fecha (más recientes primero). **Requiere ID Token** para acceso al email del usuario."
+					},
+					"response": []
+				},
+				{
+					"name": "Get User Predictions (Filtered)",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains filtered predictions', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.predictions).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions?barrio=Palermo&dormitorios=2&status=success&isFavorite=true",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions"
+							],
+							"query": [
+								{
+									"key": "barrio",
+									"value": "Palermo",
+									"description": "Filtrar por barrio"
+								},
+								{
+									"key": "dormitorios",
+									"value": "2",
+									"description": "Filtrar por cantidad de dormitorios"
+								},
+								{
+									"key": "status",
+									"value": "success",
+									"description": "success, error, pending"
+								},
+								{
+									"key": "isFavorite",
+									"value": "true",
+									"description": "Solo favoritas"
+								}
+							]
+						},
+						"description": "Obtiene predicciones filtradas por barrio, dormitorios, estado y/o favoritas. **Requiere ID Token**."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Recent Predictions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains recent predictions', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.predictions).to.be.an('array');",
+									"    pm.expect(responseJson.predictions.length).to.be.at.most(5);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/recent?limit=5",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"recent"
+							],
+							"query": [
+								{
+									"key": "limit",
+									"value": "5",
+									"description": "Cantidad de predicciones recientes"
+								}
+							]
+						},
+						"description": "Obtiene las predicciones más recientes del usuario (por defecto 10, máximo 50). **Requiere ID Token**."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Favorite Predictions",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains only favorites', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.predictions).to.be.an('array');",
+									"    responseJson.predictions.forEach(pred => {",
+									"        pm.expect(pred.isFavorite).to.be.true;",
+									"    });",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/favorites",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"favorites"
+							]
+						},
+						"description": "Obtiene todas las predicciones marcadas como favoritas por el usuario. **Requiere ID Token**."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Prediction Statistics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains statistics', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.statistics).to.not.be.undefined;",
+									"    pm.expect(responseJson.statistics.total).to.be.a('number');",
+									"    pm.expect(responseJson.statistics.successful).to.be.a('number');",
+									"    pm.expect(responseJson.statistics.failed).to.be.a('number');",
+									"    pm.expect(responseJson.statistics.averagePrice).to.be.a('number');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/statistics",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"statistics"
+							]
+						},
+						"description": "Obtiene estadísticas generales de las predicciones del usuario (total, exitosas, fallidas, precio promedio). **Requiere ID Token**."
+					},
+					"response": []
+				},
+				{
+					"name": "Get Prediction By ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains prediction data', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.prediction).to.not.be.undefined;",
+									"    pm.expect(responseJson.prediction.id).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/{{prediction_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"{{prediction_id}}"
+							]
+						},
+						"description": "Obtiene una predicción específica por su ID. El usuario solo puede ver sus propias predicciones. **Requiere ID Token**."
+					},
+					"response": []
+				},
+				{
+					"name": "Toggle Favorite",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Favorite toggled successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.prediction.isFavorite).to.be.a('boolean');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"isFavorite\": true\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/predictions/{{prediction_id}}/favorite",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"{{prediction_id}}",
+								"favorite"
+							]
+						},
+						"description": "Marca o desmarca una predicción como favorita. **Requiere ID Token**."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Notes",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Notes updated successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.prediction.userNotes).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"notes\": \"Esta consulta es para el departamento de Av. Santa Fe 2500. Precio acorde con la zona.\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/predictions/{{prediction_id}}/notes",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"{{prediction_id}}",
+								"notes"
+							]
+						},
+						"description": "Actualiza las notas personales de una predicción. **Requiere ID Token**."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Prediction",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Prediction deleted successfully', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.success).to.be.true;",
+									"    pm.expect(responseJson.message).to.include('eliminada');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text"
+							}
+						],
+						"url": {
+							"raw": "{{base_url}}/predictions/{{prediction_id}}",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"predictions",
+								"{{prediction_id}}"
+							]
+						},
+						"description": "Elimina permanentemente una predicción. El usuario solo puede eliminar sus propias predicciones. **Requiere ID Token**."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión del historial de predicciones de renta.\n\n**Importante:** Todos estos endpoints requieren **ID Token** en lugar de Access Token para poder acceder al email del usuario y loguearlo correctamente."
+		},
+		{
+			"name": "Rent Management",
+			"item": [
+				{
+					"name": "Rent Index",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains body', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.body).to.not.be.undefined;",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{}"
+						},
+						"url": {
+							"raw": "{{base_url}}/rent",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rent"
+							]
+						},
+						"description": "Endpoint de prueba para rentas."
+					},
+					"response": []
+				},
+				{
+					"name": "Predict Rent",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"if (pm.response.code === 200) {",
+									"    const responseJson = pm.response.json();",
+									"    if (responseJson.predictionId) {",
+									"        pm.environment.set('prediction_id', responseJson.predictionId);",
+									"    }",
+									"}",
+									"",
+									"pm.test('Status code is 200', function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test('Response contains result', function () {",
+									"    const responseJson = pm.response.json();",
+									"    pm.expect(responseJson.result).to.not.be.undefined;",
+									"});",
+									"",
+									"pm.test('Response contains predictionId if authenticated', function () {",
+									"    if (pm.request.headers.get('Authorization')) {",
+									"        const responseJson = pm.response.json();",
+									"        pm.expect(responseJson.predictionId).to.not.be.undefined;",
+									"    }",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json",
+								"type": "text"
+							},
+							{
+								"key": "Authorization",
+								"value": "Bearer {{id_token}}",
+								"type": "text",
+								"description": "Opcional - Si se incluye (ID Token), guarda el historial con el email del usuario"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n    \"barrio\": \"Palermo\",\n    \"ambientes\": 3,\n    \"metrosCuadradosMin\": 50,\n    \"metrosCuadradosMax\": 80,\n    \"dormitorios\": 2,\n    \"banos\": 1,\n    \"garajes\": 1,\n    \"antiguedad\": 5,\n    \"calle\": \"Av. Santa Fe\"\n}"
+						},
+						"url": {
+							"raw": "{{base_url}}/rent/predict",
+							"host": [
+								"{{base_url}}"
+							],
+							"path": [
+								"rent",
+								"predict"
+							]
+						},
+						"description": "Predice el precio de renta basándose en características. Si se autentica con ID Token, guarda el historial automáticamente con el email del usuario en los logs."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints para gestión de rentas y predicciones"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "base_url",
+			"value": "http://localhost:9000",
+			"type": "string"
+		},
+		{
+			"key": "access_token",
+			"value": "",
+			"type": "string",
+			"description": "AWS Cognito Access Token (obtenido del login)"
+		},
+		{
+			"key": "id_token",
+			"value": "",
+			"type": "string",
+			"description": "AWS Cognito ID Token (contiene información del usuario)"
+		},
+		{
+			"key": "refresh_token",
+			"value": "",
+			"type": "string",
+			"description": "AWS Cognito Refresh Token (para renovar access token)"
+		},
+		{
+			"key": "user_sub",
+			"value": "",
+			"type": "string",
+			"description": "ID único del usuario en AWS Cognito (sub claim)"
+		},
+		{
+			"key": "user_email",
+			"value": "",
+			"type": "string",
+			"description": "Email del usuario autenticado"
+		},
+		{
+			"key": "username",
+			"value": "",
+			"type": "string",
+			"description": "Username del usuario en Cognito (para endpoints de admin)"
+		},
+		{
+			"key": "prediction_id",
+			"value": "",
+			"type": "string",
+			"description": "ID de la predicción (obtenido después de hacer una predicción)"
+		},
+		{
+			"key": "pagination_token",
+			"value": "",
+			"type": "string",
+			"description": "Token de paginación para Cognito User Pool (obtenido de respuesta de GET /users)"
+		}
+	]
+}
